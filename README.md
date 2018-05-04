@@ -8,7 +8,9 @@ Jing Ma, Wei Gao, Kam-Fai Wong. Rumor Detection on Twitter with Tree-structured 
 The datafile is in a tab-sepreted column format, where each row correspond to a tweet. Consecutive columns correspond to the following pieces of information:
 
 rootid -- a unique identifier describing the tree
+
 index-of-parent-node -- an index number of the parent tweet for the current tweet
+
 index-of-current-node -- an index number of the current tweet
 parent-number -- the total number of the tree that the current tweet is part of
 text-length -- the maxium length of all the texts from the tree that the current tweet is part of 
