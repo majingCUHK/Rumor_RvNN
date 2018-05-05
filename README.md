@@ -1,4 +1,4 @@
-# Source codes for experiments in the following paper:
+# Paper of the source codes released:
 
 Jing Ma, Wei Gao, Kam-Fai Wong. Rumor Detection on Twitter with Tree-structured Recursive Neural Networks. In Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics, ACL 2018.
 
@@ -19,14 +19,18 @@ The datafile is in a tab-sepreted column format, where each row corresponds to a
 3: index-of-current-node -- an index number of the current tweet
 
 parent-number -- the total number of the tree that the current tweet is part of;
+
 text-length -- the maxium length of all the texts from the tree that the current tweet is part of;
+
 list-of-index-and-counts -- the rest of the line contains space separated index-count pairs, where a index-count pair is in format of "index:count", E.g., "index1:count1 index2:count2" (extracted from the "text" field in the json format from Twitter)
 
 
 # Dependencies:
 Please install the following python libraries:
-numpy at version 1.11.2
-theano at version 0.8.2
+
+numpy version 1.11.2
+
+theano version 0.8.2
 
 # Reproduce the experimental results
 Run script "model/Main_tree_gru.py" for bottom-up model or "model/Main_tree_gru_u2b_pool.py" for up-down model.
