@@ -1,4 +1,4 @@
-#Intro Code to reproduce experiments from the following paper:
+# Intro Code to reproduce experiments from the following paper:
 
 Jing Ma, Wei Gao, Kam-Fai Wong. Rumor Detection on Twitter with Tree-structured Recursive Neural Networks. In Proceedings of the
 56th Annual Meeting of the Association for Computational Linguistics, ACL 2018.
