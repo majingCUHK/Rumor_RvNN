@@ -33,7 +33,7 @@ numpy version 1.11.2
 theano version 0.8.2
 
 # Reproduce the experimental results
-Run script "model/Main_tree_gru.py" for bottom-up model or "model/Main_tree_gru_u2b_pool.py" for up-down model.
+Run script "model/Main_BU_RvNN.py" for bottom-up recursive model or "model/Main_TD_RvNN.py" for up-down recursive model.
 
 Alternatively, you can change the "obj" parameter and "fold" parameter to set the dataset and each fold.
 
