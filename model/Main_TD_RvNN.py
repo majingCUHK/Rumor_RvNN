@@ -83,7 +83,7 @@ def constructTree(tree):
     ## 1. ini tree node
     index2node = {}
     for i in tree:
-        node = tree_gru_u2b_pool.Node_tweet(idx=i)
+        node = TD_RvNN.Node_tweet(idx=i)
         index2node[i] = node
     ## 2. construct tree
     for j in tree:
@@ -107,7 +107,7 @@ def constructTree(tree):
     parent_num = tree[j]['parent_num'] 
     ini_x, ini_index = str2matrix( "0:0", tree[j]['maxL'] )
     #x_word, x_index, tree = tree_gru_u2b.gen_nn_inputs(root, ini_x, ini_index) 
-    x_word, x_index, tree = tree_gru_u2b_pool.gen_nn_inputs(root, ini_x) 
+    x_word, x_index, tree = TD_RvNN.gen_nn_inputs(root, ini_x) 
     return x_word, x_index, tree, parent_num       
                
 ################################# loas data ###################################
