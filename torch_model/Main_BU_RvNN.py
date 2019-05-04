@@ -12,6 +12,7 @@ import os
 import sys
 
 import BU_RvNN
+import torch.optim as optim
 
 import numpy as np
 from numpy.testing import assert_array_almost_equal
@@ -171,11 +172,9 @@ t0 = time.time()
 model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass)
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
-sys.exit(0)
-######debug here######
-######################
 
 ## 3. looping SGD
+optimizer = optim.SGD(model.parameters(), lr=0.005)
 losses_5, losses = [], []
 num_examples_seen = 0
 for epoch in range(Nepoch):
@@ -183,10 +182,13 @@ for epoch in range(Nepoch):
     indexs = [i for i in range(len(y_train))]
     random.shuffle(indexs) 
     for i in indexs:
-        loss, pred_y = model.train_step_up(word_train[i], index_train[i], tree_train[i], y_train[i], lr)
-        losses.append(loss)
+        pred_y, loss = model.forward(word_train[i], index_train[i], tree_train[i], y_train[i])
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.data)
         num_examples_seen += 1
-    print("epoch=%d: loss=%f" % ( epoch, np.mean(losses) ))
+        print("epoch=%d: loss=%f" % ( epoch, np.mean(losses) ))
     sys.stdout.flush()
     
     ## cal loss & evaluate
