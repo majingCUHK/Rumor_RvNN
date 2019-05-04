@@ -198,3 +198,6 @@ class RvNN(nn.Module):
     def init_matrix(self, shape):
         return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32'))
 
+    def predict_up(self, x_word, x_index, x_tree):
+        final_state = self.compute_tree_states(x_word, x_index, x_tree)
+        return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)

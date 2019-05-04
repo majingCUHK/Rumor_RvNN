@@ -94,7 +94,7 @@ def evaluation_4class(prediction, y): # 4 dim
     TP4, FP4, FN4, TN4 = 0, 0, 0, 0
     e, RMSE, RMSE1, RMSE2, RMSE3, RMSE4 = 0.000001, 0.0, 0.0, 0.0, 0.0, 0.0
     for i in range(len(y)):
-        y_i, p_i = list(y[i]), list(prediction[i][0])
+        y_i, p_i = list(y[i]), list(prediction[i])
         ##RMSE
         for j in range(len(y_i)):
             RMSE += (y_i[j]-p_i[j])**2

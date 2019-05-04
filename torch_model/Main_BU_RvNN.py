@@ -177,9 +177,9 @@ print('Recursive model established,', (t1-t0)/60)
 optimizer = optim.SGD(model.parameters(), lr=0.005)
 losses_5, losses = [], []
 num_examples_seen = 0
+indexs = [i for i in range(len(y_train))]
 for epoch in range(Nepoch):
-    ## one SGD 
-    indexs = [i for i in range(len(y_train))]
+    ## one SGD
     random.shuffle(indexs) 
     for i in indexs:
         pred_y, loss = model.forward(word_train[i], index_train[i], tree_train[i], y_train[i])
@@ -188,7 +188,7 @@ for epoch in range(Nepoch):
         optimizer.step()
         losses.append(loss.data)
         num_examples_seen += 1
-        print("epoch=%d: loss=%f" % ( epoch, np.mean(losses) ))
+        print("epoch=%d: idx=%d, loss=%f" % ( epoch, i, np.mean(losses) ))
     sys.stdout.flush()
     
     ## cal loss & evaluate
@@ -199,7 +199,8 @@ for epoch in range(Nepoch):
        sys.stdout.flush()
        prediction = []
        for j in range(len(y_test)):
-           prediction.append(model.predict_up(word_test[j], index_test[j], tree_test[j]) )   
+           prediction.append(model.predict_up(word_test[j], index_test[j], tree_test[j]).data.tolist() )
+       print("predictions:", prediction)
        res = evaluation_4class(prediction, y_test) 
        print('results:', res)
        sys.stdout.flush()
