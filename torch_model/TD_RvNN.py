@@ -29,19 +29,21 @@ def gen_nn_inputs(root_node, ini_word):
     root_node.idx = 1
     tree = [[0, root_node.idx]]
     X_word, X_index = [root_node.word], [root_node.index]
-    internal_tree, internal_word, internal_index  = _get_tree_path(root_node)
+    internal_tree, internal_word, internal_index, leaf_idxs = _get_tree_path(root_node)
     tree.extend(internal_tree)
     X_word.extend(internal_word)
     X_index.extend(internal_index)
     X_word.append(ini_word)
     return (np.array(X_word, dtype='float32'),
             np.array(X_index, dtype='int32'),
-            np.array(tree, dtype='int32'))
+            np.array(tree, dtype='int32'),
+            np.array(leaf_idxs, dtype='int32')
+            )
 
 def _get_tree_path(root_node):
     """Get computation order of leaves -> root."""
     if not root_node.children:
-        return [], [], []
+        return [], [], [], [1]
     layers = []
     layer = [root_node]
     while layer:
@@ -53,19 +55,20 @@ def _get_tree_path(root_node):
     tree = []
     word = []
     index = []
-
+    leafs = []
     idx_cnt = root_node.idx
     for layer in layers:
         for node in layer:
             if not node.children:
-               continue 
+                leafs.append(node.idx)
+                continue
             for child in node.children:
                 idx_cnt += 1
                 child.idx = idx_cnt
                 tree.append([node.idx, child.idx])
                 word.append(child.word if child.word is not None else -1)
                 index.append(child.index if child.index is not None else -1)
-    return tree, word, index
+    return tree, word, index, leafs
 
 ################################ tree rnn class ######################################
 class RvNN(nn.Module):
@@ -96,8 +99,8 @@ class RvNN(nn.Module):
         self.W_out_td = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
         self.b_out_td = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
 
-    def forward(self, x_word, x_index, tree, y):
-        final_state = self.compute_tree_states(x_word, x_index, tree)
+    def forward(self, x_word, x_index, tree, leaf_idxs, y):
+        final_state = self.compute_tree_states(x_word, x_index, tree, leaf_idxs)
         pred, loss = self.predAndLoss(final_state, y)
         return pred, loss
 
@@ -109,7 +112,7 @@ class RvNN(nn.Module):
         h_td = z_td * parent_h + (1 - z_td) * c
         return h_td
 
-    def compute_tree_states(self, x_word, x_index, tree):
+    def compute_tree_states(self, x_word, x_index, tree, leaf_idxs):
 
         def _recurrence(x_word, x_index, tree, node_h):
             parent_h = node_h[tree[0]]
@@ -122,7 +125,7 @@ class RvNN(nn.Module):
         for words, indexs, thislayer in zip(x_word, x_index, tree):
             node_h = _recurrence(words, indexs, thislayer, node_h)
 
-        return node_h.max(dim=0)[0]
+        return node_h[leaf_idxs].max(dim=0)[0]
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_td.mul(final_state).sum(dim=1) +self.b_out_td)
@@ -135,6 +138,6 @@ class RvNN(nn.Module):
     def init_matrix(self, shape):
         return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32'))
 
-    def predict_up(self, x_word, x_index, x_tree):
-        final_state = self.compute_tree_states(x_word, x_index, x_tree)
+    def predict_up(self, x_word, x_index, x_tree, leaf_idxs):
+        final_state = self.compute_tree_states(x_word, x_index, x_tree, leaf_idxs)
         return F.softmax(self.W_out_td.mul(final_state).sum(dim=1) +self.b_out_td)

@@ -92,8 +92,8 @@ def constructTree(tree):
     ## 3. convert tree to DNN input    
     parent_num = tree[j]['parent_num'] 
     ini_x, ini_index = str2matrix( "0:0", tree[j]['maxL'] )
-    x_word, x_index, tree = TD_RvNN.gen_nn_inputs(root, ini_x) 
-    return x_word, x_index, tree, parent_num       
+    x_word, x_index, tree, leaf_idxs = TD_RvNN.gen_nn_inputs(root, ini_x)
+    return x_word, x_index, tree, leaf_idxs
                
 ################################# loas data ###################################
 def loadData():
@@ -118,7 +118,7 @@ def loadData():
     print( 'tree no:', len(treeDic))
     
     print( "loading train set", )
-    tree_train, word_train, index_train, y_train, parent_num_train, c = [], [], [], [], [], 0
+    tree_train, word_train, index_train, y_train, leaf_idxs_train, c = [], [], [], [], [], 0
     l1,l2,l3,l4 = 0,0,0,0
     for eid in open(trainPath):
         #if c > 8: break
@@ -132,16 +132,16 @@ def loadData():
         y, l1,l2,l3,l4 = loadLabel(label, l1, l2, l3, l4)
         y_train.append(y)
         ## 2. construct tree
-        x_word, x_index, tree, parent_num = constructTree(treeDic[eid])
+        x_word, x_index, tree, leaf_idxs = constructTree(treeDic[eid])
         tree_train.append(tree)
         word_train.append(x_word)
         index_train.append(x_index)
-        parent_num_train.append(parent_num)
+        leaf_idxs_train.append(leaf_idxs)
         c += 1
     print( l1,l2,l3,l4)
     
     print( "loading test set", )
-    tree_test, word_test, index_test, parent_num_test, y_test, c = [], [], [], [], [], 0
+    tree_test, word_test, index_test, leaf_idxs_test, y_test, c = [], [], [], [], [], 0
     l1,l2,l3,l4 = 0,0,0,0
     for eid in open(testPath):
         #if c > 4: break
@@ -155,23 +155,24 @@ def loadData():
         y, l1,l2,l3,l4 = loadLabel(label, l1, l2, l3, l4)
         y_test.append(y)
         ## 2. construct tree
-        x_word, x_index, tree, parent_num = constructTree(treeDic[eid])
+        x_word, x_index, tree, leaf_idxs = constructTree(treeDic[eid])
         tree_test.append(tree)
         word_test.append(x_word)  
         index_test.append(x_index) 
-        parent_num_test.append(parent_num)
+        leaf_idxs_test.append(leaf_idxs)
         c += 1
     print( l1,l2,l3,l4)
-    print( "train no:", len(tree_train), len(word_train), len(index_train),len(parent_num_train), len(y_train))
-    print( "test no:", len(tree_test), len(word_test), len(index_test), len(parent_num_test), len(y_test))
+    print( "train no:", len(tree_train), len(word_train), len(index_train),len(leaf_idxs_train), len(y_train))
+    print( "test no:", len(tree_test), len(word_test), len(index_test), len(leaf_idxs_test), len(y_test))
     print( "dim1 for 0:", len(tree_train[0]), len(word_train[0]), len(index_train[0]))
-    print( "case 0:", tree_train[0][0], word_train[0][0], index_train[0][0], parent_num_train[0])
-    return tree_train, word_train, index_train, parent_num_train, y_train, tree_test, word_test, index_test, parent_num_test, y_test
+    print( "case 0:", tree_train[0][0], word_train[0][0], index_train[0][0], leaf_idxs_train[0])
+    return tree_train, word_train, index_train, leaf_idxs_train, y_train, tree_test, word_test, index_test, leaf_idxs_test, y_test
 
 ##################################### MAIN ####################################        
 ## 1. load tree & word & index & label
-tree_train, word_train, index_train, parent_num_train, y_train, tree_test, word_test, index_test, parent_num_test, y_test = loadData()
+tree_train, word_train, index_train, leaf_idxs_train, y_train, tree_test, word_test, index_test, leaf_idxs_test, y_test = loadData()
 ## 2. ini RNN model
+
 t0 = time.time()
 model = TD_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass)
 t1 = time.time()
@@ -186,24 +187,24 @@ for epoch in range(Nepoch):
     ## one SGD
     random.shuffle(indexs)
     for i in indexs:
-        pred_y, loss = model.forward(word_train[i], index_train[i], tree_train[i], y_train[i])
+        pred_y, loss = model.forward(word_train[i], index_train[i], tree_train[i], leaf_idxs_train[i], y_train[i])
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         losses.append(loss.data)
         num_examples_seen += 1
         print("epoch=%d: idx=%d, loss=%f" % (epoch, i, np.mean(losses)))
-    sys.stdout.flush()
-
+        if i == indexs[10]:
+            break
     ## cal loss & evaluate
-    if epoch % 5 == 0:
+    if epoch % 1 == 0:
         losses_5.append((num_examples_seen, np.mean(losses)))
         time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print("%s: Loss after num_examples_seen=%d epoch=%d: %f" % (time, num_examples_seen, epoch, np.mean(losses)))
         sys.stdout.flush()
         prediction = []
         for j in range(len(y_test)):
-            prediction.append(model.predict_up(word_test[j], index_test[j], tree_test[j]).data.tolist())
+            prediction.append(model.predict_up(word_test[j], index_test[j], tree_test[j], leaf_idxs_test[j]).data.tolist())
         print("predictions:", prediction)
         res = evaluation_4class(prediction, y_test)
         print('results:', res)
