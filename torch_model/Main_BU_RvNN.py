@@ -174,7 +174,7 @@ t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 
 ## 3. looping SGD
-optimizer = optim.SGD(model.parameters(), lr=0.005)
+optimizer = optim.Adagrad(model.parameters(), lr=0.01)
 losses_5, losses = [], []
 num_examples_seen = 0
 indexs = [i for i in range(len(y_train))]
