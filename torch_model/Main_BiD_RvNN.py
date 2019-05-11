@@ -66,7 +66,7 @@ for epoch in range(Nepoch):
     ## one SGD
     random.shuffle(indexs)
     for i in indexs:
-        pred_y, loss = model.forward(TD_word_train[i], TD_index_train[i], TD_leaf_idxs_train[i], TD_tree_train[i], BU_word_train[i], BU_index_train[i], BU_tree_train[i], BU_y_train[i])
+        pred_y, loss = model.forward(TD_word_train[i], TD_index_train[i], TD_tree_train[i], TD_leaf_idxs_train[i], BU_word_train[i], BU_index_train[i], BU_tree_train[i], BU_y_train[i])
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -84,7 +84,7 @@ for epoch in range(Nepoch):
         prediction = []
         for j in range(len(TD_y_test)):
             prediction.append(
-                model.predict_up(TD_word_test[i], TD_index_test[i], TD_leaf_idxs_test[i], TD_tree_test[i], BU_word_test[i], BU_index_test[i], BU_tree_test[i], BU_y_test[i]).data.tolist())
+                model.predict_up(TD_word_test[i], TD_index_test[i], TD_tree_test[i], TD_leaf_idxs_test[i], BU_word_test[i], BU_index_test[i], BU_tree_test[i], BU_y_test[i]).data.tolist())
         print("predictions:", prediction)
         res = evaluation_4class(prediction, TD_y_test)
         print('results:', res)
