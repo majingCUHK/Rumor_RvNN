@@ -50,7 +50,6 @@ TD_tree_train, TD_word_train, TD_index_train, TD_leaf_idxs_train, TD_y_train, TD
 assert (BU_y_train == TD_y_train)
 assert (BU_y_test == TD_y_test)
 print "load data completed"
-sys.exit(0)
 
 ## 2. ini RNN model
 t0 = time.time()
