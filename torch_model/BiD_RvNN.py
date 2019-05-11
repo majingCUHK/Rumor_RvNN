@@ -43,13 +43,13 @@ class RvNN(nn.Module):
         self.U_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
         self.b_h_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
 
-        self.W_out1 = nn.parameter.Parameter(self.init_matrix([2*self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
-        self.b_out1 = nn.parameter.Parameter(self.init_vector([2*self.hidden_dim]), requires_grad=True)
-        self.W_out2 = nn.parameter.Parameter(self.init_matrix([2*self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
-        self.b_out2 = nn.parameter.Parameter(self.init_vector([2*self.hidden_dim]), requires_grad=True)
-        self.W_out3 = nn.parameter.Parameter(self.init_matrix([2*self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
-        self.b_out3 = nn.parameter.Parameter(self.init_vector([2*self.hidden_dim]), requires_grad=True)
-        self.W_out4 = nn.parameter.Parameter(self.init_matrix([self.Nclass, 2*self.hidden_dim]), requires_grad=True)
+        self.W_out1 = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
+        self.b_out1 = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
+        # self.W_out2 = nn.parameter.Parameter(self.init_matrix([2*self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
+        # self.b_out2 = nn.parameter.Parameter(self.init_vector([2*self.hidden_dim]), requires_grad=True)
+        # self.W_out3 = nn.parameter.Parameter(self.init_matrix([2*self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
+        # self.b_out3 = nn.parameter.Parameter(self.init_vector([2*self.hidden_dim]), requires_grad=True)
+        self.W_out4 = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
         self.b_out4 = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
 
     def forward(self, td_x_word, td_x_index, td_tree, td_leaf_idxs, bu_x_word, bu_x_index, bu_tree, y):
