@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 __doc__ = """Tree GRU aka Recursive Neural Networks."""
 
 import numpy as np
