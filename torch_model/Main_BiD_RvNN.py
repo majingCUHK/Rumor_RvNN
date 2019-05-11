@@ -66,7 +66,7 @@ for epoch in range(Nepoch):
     ## one SGD
     random.shuffle(indexs)
     for i in indexs:
-        pred_y, loss = model.forward(TD_word_train[i], TD_index_train[i], TD_leaf_idxs_train[i], TD_tree_train[i], BU_word_train[i], BU_index_train[i], BU_tree_train[i], BU_y_train[i], lr)
+        pred_y, loss = model.forward(TD_word_train[i], TD_index_train[i], TD_leaf_idxs_train[i], TD_tree_train[i], BU_word_train[i], BU_index_train[i], BU_tree_train[i], BU_y_train[i])
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
