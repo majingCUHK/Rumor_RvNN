@@ -73,8 +73,6 @@ for epoch in range(Nepoch):
         losses.append(loss.data)
         num_examples_seen += 1
         print("epoch=%d: idx=%d, loss=%f" % (epoch, i, np.mean(losses)))
-        if i == indexs[10]:
-            break
         ## cal loss & evaluate
     if epoch % 1 == 0:
         losses_5.append((num_examples_seen, np.mean(losses)))
