@@ -58,8 +58,8 @@ class RvNN(nn.Module):
         final_state = torch.cat((td_final_state, bu_final_state), dim=0)
         final_state1 = self.W_out1.mul(final_state).sum(dim=1) +self.b_out1
         final_state2 = self.W_out2.mul(final_state1).sum(dim=1) + self.b_out2
-        final_state3 = self.W_out3.mul(final_state2).sum(dim=1) + self.b_out3
-        pred, loss = self.predAndLoss(final_state3, y)
+        # final_state3 = self.W_out3.mul(final_state2).sum(dim=1) + self.b_out3
+        pred, loss = self.predAndLoss(final_state2, y)
         return pred, loss
 
     def td_recursive_unit(self, child_word, child_index, parent_h):
@@ -138,5 +138,5 @@ class RvNN(nn.Module):
         final_state = torch.cat((td_final_state, bu_final_state), dim=0)
         final_state1 = self.W_out1.mul(final_state).sum(dim=1) +self.b_out1
         final_state2 = self.W_out2.mul(final_state1).sum(dim=1) + self.b_out2
-        final_state3 = self.W_out3.mul(final_state2).sum(dim=1) + self.b_out3
-        return F.softmax(self.W_out4.mul(final_state3).sum(dim=1) +self.b_out4)
+        # final_state3 = self.W_out3.mul(final_state2).sum(dim=1) + self.b_out3
+        return F.softmax(self.W_out4.mul(final_state2).sum(dim=1) +self.b_out4)
