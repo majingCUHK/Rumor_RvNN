@@ -84,7 +84,7 @@ for epoch in range(Nepoch):
         prediction = []
         for j in range(len(TD_y_test)):
             prediction.append(
-                model.predict_up(TD_word_test[j], TD_index_test[j], TD_tree_test[j], TD_leaf_idxs_test[j], BU_word_test[j], BU_index_test[j], BU_tree_test[j], BU_y_test[j]).data.tolist())
+                model.predict_up(TD_word_test[j], TD_index_test[j], TD_tree_test[j], TD_leaf_idxs_test[j], BU_word_test[j], BU_index_test[j], BU_tree_test[j]).data.tolist())
         print("predictions:", prediction)
         res = evaluation_4class(prediction, TD_y_test)
         print('results:', res)

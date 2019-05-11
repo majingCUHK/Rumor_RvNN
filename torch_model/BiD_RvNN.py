@@ -43,14 +43,23 @@ class RvNN(nn.Module):
         self.U_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
         self.b_h_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
 
-        self.W_out = nn.parameter.Parameter(self.init_matrix([self.Nclass, 2*self.hidden_dim]), requires_grad=True)
-        self.b_out = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
+        self.W_out1 = nn.parameter.Parameter(self.init_matrix([2*self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
+        self.b_out1 = nn.parameter.Parameter(self.init_vector([2*self.hidden_dim]), requires_grad=True)
+        self.W_out2 = nn.parameter.Parameter(self.init_matrix([2*self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
+        self.b_out2 = nn.parameter.Parameter(self.init_vector([2*self.hidden_dim]), requires_grad=True)
+        self.W_out3 = nn.parameter.Parameter(self.init_matrix([2*self.hidden_dim, 2*self.hidden_dim]), requires_grad=True)
+        self.b_out3 = nn.parameter.Parameter(self.init_vector([2*self.hidden_dim]), requires_grad=True)
+        self.W_out4 = nn.parameter.Parameter(self.init_matrix([self.Nclass, 2*self.hidden_dim]), requires_grad=True)
+        self.b_out4 = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
 
     def forward(self, td_x_word, td_x_index, td_tree, td_leaf_idxs, bu_x_word, bu_x_index, bu_tree, y):
         td_final_state = self.td_compute_tree_states(td_x_word, td_x_index, td_tree, td_leaf_idxs)
         bu_final_state = self.bu_compute_tree_states(bu_x_word, bu_x_index, bu_tree)
         final_state = torch.cat((td_final_state, bu_final_state), dim=0)
-        pred, loss = self.predAndLoss(final_state, y)
+        final_state1 = self.W_out1.mul(final_state).sum(dim=1) +self.b_out1
+        final_state2 = self.W_out2.mul(final_state1).sum(dim=1) + self.b_out2
+        final_state3 = self.W_out3.mul(final_state2).sum(dim=1) + self.b_out3
+        pred, loss = self.predAndLoss(final_state3, y)
         return pred, loss
 
     def td_recursive_unit(self, child_word, child_index, parent_h):
@@ -113,7 +122,7 @@ class RvNN(nn.Module):
         return root_state
 
     def predAndLoss(self, final_state, ylabel):
-        pred = F.softmax(self.W_out.mul(final_state).sum(dim=1) +self.b_out)
+        pred = F.softmax(self.W_out4.mul(final_state).sum(dim=1) +self.b_out4)
         loss = (torch.tensor(ylabel, dtype=torch.float)-pred).pow(2).sum()
         return pred, loss
 
@@ -127,4 +136,7 @@ class RvNN(nn.Module):
         td_final_state = self.td_compute_tree_states(td_x_word, td_x_index, td_tree, td_leaf_idxs)
         bu_final_state = self.bu_compute_tree_states(bu_x_word, bu_x_index, bu_tree)
         final_state = torch.cat((td_final_state, bu_final_state), dim=0)
-        return F.softmax(self.W_out.mul(final_state).sum(dim=1) +self.b_out)
+        final_state1 = self.W_out1.mul(final_state).sum(dim=1) +self.b_out1
+        final_state2 = self.W_out2.mul(final_state1).sum(dim=1) + self.b_out2
+        final_state3 = self.W_out3.mul(final_state2).sum(dim=1) + self.b_out3
+        return F.softmax(self.W_out4.mul(final_state3).sum(dim=1) +self.b_out4)
