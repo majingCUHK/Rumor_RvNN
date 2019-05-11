@@ -116,7 +116,7 @@ def loadData(treePath, labelPath, trainPath, testPath):
         eid = eid.rstrip()
         if not labelDic.__contains__(eid): continue
         if not treeDic.__contains__(eid): continue
-        if len(treeDic[eid]) <= 0:
+        if len(treeDic[eid]) < 2:
             continue
             ## 1. load label
         label = labelDic[eid]
