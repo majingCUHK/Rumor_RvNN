@@ -49,7 +49,7 @@ class RvNN(nn.Module):
     def forward(self, td_x_word, td_x_index, td_tree, td_leaf_idxs, bu_x_word, bu_x_index, bu_tree, y):
         td_final_state = self.td_compute_tree_states(td_x_word, td_x_index, td_tree, td_leaf_idxs)
         bu_final_state = self.bu_compute_tree_states(bu_x_word, bu_x_index, bu_tree)
-        final_state = torch.cat()
+        final_state = torch.cat((td_final_state, bu_final_state), dim=0)
         pred, loss = self.predAndLoss(final_state, y)
         return pred, loss
 
@@ -113,7 +113,7 @@ class RvNN(nn.Module):
         return root_state
 
     def predAndLoss(self, final_state, ylabel):
-        pred = F.softmax(self.W_out_td.mul(final_state).sum(dim=1) +self.b_out_td)
+        pred = F.softmax(self.W_out.mul(final_state).sum(dim=1) +self.b_out)
         loss = (torch.tensor(ylabel, dtype=torch.float)-pred).pow(2).sum()
         return pred, loss
 
@@ -125,4 +125,4 @@ class RvNN(nn.Module):
 
     def predict_up(self, x_word, x_index, x_tree, leaf_idxs):
         final_state = self.td_compute_tree_states(x_word, x_index, x_tree, leaf_idxs)
-        return F.softmax(self.W_out_td.mul(final_state).sum(dim=1) +self.b_out_td)
+        return F.softmax(self.W_out.mul(final_state).sum(dim=1) +self.b_out)
