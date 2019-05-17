@@ -368,7 +368,8 @@ class MultiAttentionFCN(nn.Module):
 
     def recursive_unit(self, parent_word, parent_index, child_h):
         #attention
-        parent_xe = self.E_bu[:, parent_index].mul(torch.tensor(parent_word)).sum(dim=1)
+        print(self.E_bu)
+        parent_xe = self.E_bu[:, parent_index].mul(parent_word).sum(dim=1)
 
         query = parent_xe.mul(self.WQ[0].t()).sum(dim=1)
         key = child_h.mm(self.WK[0])
@@ -395,17 +396,17 @@ class MultiAttentionFCN(nn.Module):
         num_nodes = x_word.shape[0]
         num_leaves = num_nodes -num_parents
         leaf_h = list(map(
-                            lambda x_idxs: self.recursive_unit(x_idxs[0], x_idxs[1], torch.zeros([self.degree, self.hidden_dim])).tolist(),
+                            lambda x_idxs: self.recursive_unit(torch.tensor(x_idxs[0]).cuda(), torch.tensor(x_idxs[1]).cuda(), torch.zeros([self.degree, self.hidden_dim]).cuda()).tolist(),
                                 zip(x_word[:num_leaves], x_index[:num_leaves])
                         )
                     )
 
-        init_node_h = torch.tensor(leaf_h)
+        init_node_h = torch.tensor(leaf_h).cuda()
 
         def _recurrence(x_word, x_index, tree, idx, node_h):
             child_exists = (tree[:-1] > -1).nonzero()
             child_h = node_h[ tree[child_exists] ]
-            parent_h = self.recursive_unit(x_word, x_index, child_h)
+            parent_h = self.recursive_unit(torch.tensor(x_word).cuda(), torch.tensor(x_index).cuda(), child_h)
             node_h = torch.cat((node_h, parent_h.view(1, -1)), 0)
             return node_h, parent_h
 
@@ -423,10 +424,10 @@ class MultiAttentionFCN(nn.Module):
         return pred, loss
 
     def init_vector(self, shape):
-        return torch.zeros(shape)
+        return torch.zeros(shape).cuda()
 
     def init_matrix(self, shape):
-        return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32'))
+        return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32')).cuda()
 
     def predict_up(self, x_word, x_index, x_tree):
         final_state = self.compute_tree_states(x_word, x_index, x_tree)
