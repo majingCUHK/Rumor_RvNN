@@ -180,7 +180,7 @@ t0 = time.time()
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU
 # model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU
 model = BU_Transformer.MultiAttentionFCN(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
-# model.cuda()
+model.cuda()
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 
@@ -194,12 +194,13 @@ for epoch in range(Nepoch):
     random.shuffle(indexs) 
     for i in indexs:
         pred_y, loss = model.forward(word_train[i], index_train[i], tree_train[i], y_train[i])
+        loss.cuda()
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        losses.append(loss.data)
+        losses.append(float(loss.data))
         num_examples_seen += 1
-        print("epoch=%d: idx=%d, loss=%f" % ( epoch, i, np.mean(losses) ))
+        print("epoch=%d: idx=%d,loss=%f"%( epoch, i, np.mean(losses)))
     sys.stdout.flush()
     
     ## cal loss & evaluate

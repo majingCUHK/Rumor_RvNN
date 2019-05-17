@@ -368,7 +368,6 @@ class MultiAttentionFCN(nn.Module):
 
     def recursive_unit(self, parent_word, parent_index, child_h):
         #attention
-        print(self.E_bu)
         parent_xe = self.E_bu[:, parent_index].mul(parent_word).sum(dim=1)
 
         query = parent_xe.mul(self.WQ[0].t()).sum(dim=1)
@@ -396,7 +395,7 @@ class MultiAttentionFCN(nn.Module):
         num_nodes = x_word.shape[0]
         num_leaves = num_nodes -num_parents
         leaf_h = list(map(
-                            lambda x_idxs: self.recursive_unit(torch.tensor(x_idxs[0]).cuda(), torch.tensor(x_idxs[1]).cuda(), torch.zeros([self.degree, self.hidden_dim]).cuda()).tolist(),
+                            lambda x_idxs: self.recursive_unit(torch.tensor(x_idxs[0]).cuda(), x_idxs[1], torch.zeros([self.degree, self.hidden_dim]).cuda()).tolist(),
                                 zip(x_word[:num_leaves], x_index[:num_leaves])
                         )
                     )
@@ -406,7 +405,7 @@ class MultiAttentionFCN(nn.Module):
         def _recurrence(x_word, x_index, tree, idx, node_h):
             child_exists = (tree[:-1] > -1).nonzero()
             child_h = node_h[ tree[child_exists] ]
-            parent_h = self.recursive_unit(torch.tensor(x_word).cuda(), torch.tensor(x_index).cuda(), child_h)
+            parent_h = self.recursive_unit(torch.tensor(x_word).cuda(), x_index, child_h)
             node_h = torch.cat((node_h, parent_h.view(1, -1)), 0)
             return node_h, parent_h
 
@@ -420,7 +419,7 @@ class MultiAttentionFCN(nn.Module):
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
-        loss = (torch.tensor(ylabel, dtype=torch.float)-pred).pow(2).sum()
+        loss = (torch.tensor(ylabel, dtype=torch.float).cuda()-pred).pow(2).sum()
         return pred, loss
 
     def init_vector(self, shape):
