@@ -12,6 +12,7 @@ import os
 import sys
 
 import BU_RvNN
+import BU_Transformer
 import torch.optim as optim
 
 import numpy as np
@@ -166,15 +167,25 @@ def loadData():
 ##################################### MAIN ####################################        
 ## 1. load tree & word & index & label
 tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, y_test = loadData()
-
+# max_degree = max( list(
+#                         map(lambda tree: max(list(map(lambda layer:len(layer), tree))),
+#                         tree_train)
+#                     )
+#                 )
+# print("tree_train:", max_degree)
+# sys.exit(0)
 ## 2. ini RNN model
 t0 = time.time()
-model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass)
+# model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU
+# model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU
+# model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU
+model = BU_Transformer.MultiAttentionFCN(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
+# model.cuda()
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 
 ## 3. looping SGD
-optimizer = optim.Adagrad(model.parameters(), lr=0.01)
+optimizer = optim.Adadelta(model.parameters(), lr=0.01)
 losses_5, losses = [], []
 num_examples_seen = 0
 indexs = [i for i in range(len(y_train))]
@@ -192,7 +203,7 @@ for epoch in range(Nepoch):
     sys.stdout.flush()
     
     ## cal loss & evaluate
-    if epoch % 5 == 0:
+    if epoch % 1 == 0:
        losses_5.append((num_examples_seen, np.mean(losses))) 
        time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
        print("%s: Loss after num_examples_seen=%d epoch=%d: %f" % (time, num_examples_seen, epoch, np.mean(losses)))
