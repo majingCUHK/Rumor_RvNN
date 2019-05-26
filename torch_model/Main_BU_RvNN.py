@@ -179,8 +179,7 @@ t0 = time.time()
 # model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU
 # model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU
-model = BU_Transformer.MultiAttentionFCN(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
-model.cuda()
+model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 

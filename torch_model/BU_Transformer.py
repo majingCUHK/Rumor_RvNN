@@ -165,10 +165,10 @@ class AttentionGRU(nn.Module):
     def recursive_unit(self, parent_word, parent_index, child_h):
         #attention
         parent_xe = self.E_bu[:, parent_index].mul(torch.tensor(parent_word)).sum(dim=1)
-        query = parent_xe.mul(self.WQ.t()).sum(dim=1)
+        query = F.sigmoid(parent_xe.mul(self.WQ.t()).sum(dim=1))
         key = child_h.mm(self.WK)
         val = child_h.mm(self.WV)
-        attention = F.softmax( (query*np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
+        attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
         h_tilde = attention.mul(val.t()).sum(dim=1)
         #gru
         z_bu = F.sigmoid(self.W_z_bu.mul(parent_xe).sum(dim=1) + self.U_z_bu.mul(h_tilde).sum(dim=1) + self.b_z_bu)
@@ -265,7 +265,7 @@ class MultiAttentionGRU(nn.Module):
         query = parent_xe.mul(self.WQ[0].t()).sum(dim=1)
         key = child_h.mm(self.WK[0])
         val = child_h.mm(self.WV[0])
-        attention = F.softmax( (query*np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
+        attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
         h_tilde = attention.mul(val.t()).sum(dim=1)
 
         for i in range(1,self.multi_head):
@@ -373,7 +373,7 @@ class MultiAttentionFCN(nn.Module):
         query = parent_xe.mul(self.WQ[0].t()).sum(dim=1)
         key = child_h.mm(self.WK[0])
         val = child_h.mm(self.WV[0])
-        attention = F.softmax( (query*np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
+        attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
         h_tilde = attention.mul(val.t()).sum(dim=1)
 
         for i in range(1,self.multi_head):
