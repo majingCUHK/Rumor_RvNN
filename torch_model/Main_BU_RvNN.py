@@ -14,7 +14,7 @@ import sys
 import BU_RvNN
 import BU_Transformer
 import torch.optim as optim
-
+import torch
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
@@ -184,19 +184,21 @@ t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 
 ## 3. looping SGD
-for name, parameter in model.name_parameters():
-    print(name, parameter)
-sys.exit(0)
+paras = [{'param':parameter, 'lr':0.05, 'weight_decay':0.001} if not 'E_bu' in name else {'param':parameter, 'lr':0.1} for name, parameter in model.named_parameters()]
 optimizer = optim.Adadelta(model.parameters(), lr=0.01, weight_decay=0.1)
 losses_5, losses = [], []
 num_examples_seen = 0
+batch_size = 5
 indexs = [i for i in range(len(y_train))]
 for epoch in range(Nepoch):
     ## one SGD
     random.shuffle(indexs) 
-    for i in indexs:
-        pred_y, loss = model.forward(word_train[i], index_train[i], tree_train[i], y_train[i])
-        loss.cuda()
+    for i in range(0, len(indexs), batch_size):
+        batch_indexs = indexs[i:min(i+batch_size, len(indexs))]
+        loss = torch.tensor(0.0)
+        for i in batch_indexs:
+            loss += model.forward(word_train[i], index_train[i], tree_train[i], y_train[i])
+        loss = loss/(1.0*len(batch_indexs))
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

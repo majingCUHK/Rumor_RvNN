@@ -253,10 +253,11 @@ class MultiAttentionGRU(nn.Module):
         self.WK = nn.parameter.Parameter(self.init_matrix([self.multi_head, self.hidden_dim, self.hidden_dim]))
         self.WV = nn.parameter.Parameter(self.init_matrix([self.multi_head, self.hidden_dim, self.hidden_dim]))
         self.WO = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim*self.multi_head]))
+        # self.Drop = nn.Dropout(0.5)
     def forward(self, x_word, x_index, tree, y):
         final_state = self.compute_tree_states(x_word, x_index, tree)
         pred, loss = self.predAndLoss(final_state, y)
-        return pred, loss
+        return loss
 
     def Word2Vec(self, word, index):
         vec = self.E_bu[:, index].mul(torch.tensor(word)).sum(dim=1)
@@ -285,6 +286,7 @@ class MultiAttentionGRU(nn.Module):
             tmp = attention.mul(val.t()).sum(dim=1)
             h_tilde = torch.cat((h_tilde, tmp), dim=0)
         return self.WO.mul(h_tilde).sum(dim=1)
+
 
     def recursive_unit(self, parent_xe, child_h, child_xe):
         #attention
