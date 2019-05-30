@@ -184,7 +184,10 @@ t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 
 ## 3. looping SGD
-optimizer = optim.Adadelta(model.parameters(), lr=0.01)
+for name, parameter in model.name_parameters():
+    print(name, parameter)
+sys.exit(0)
+optimizer = optim.Adadelta(model.parameters(), lr=0.01, weight_decay=0.1)
 losses_5, losses = [], []
 num_examples_seen = 0
 indexs = [i for i in range(len(y_train))]
