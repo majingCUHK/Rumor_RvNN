@@ -27,7 +27,7 @@ obj = "Twitter15" # choose dataset, you can choose either "Twitter15" or "Twitte
 fold = "3" # fold index, choose from 0-4
 tag = ""
 vocabulary_size = 5000
-hidden_dim = 100
+hidden_dim = 64
 Nclass = 4
 Nepoch = 500
 lr = 0.005
@@ -177,8 +177,8 @@ tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, 
 ## 2. ini RNN model
 t0 = time.time()
 # model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU
-# model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU
-model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU
+model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU
+# model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)

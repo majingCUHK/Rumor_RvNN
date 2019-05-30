@@ -160,16 +160,18 @@ class AttentionGRU(nn.Module):
     def forward(self, x_word, x_index, tree, y):
         final_state = self.compute_tree_states(x_word, x_index, tree)
         pred, loss = self.predAndLoss(final_state, y)
-        return pred, loss
+        return loss
 
-    def recursive_unit(self, parent_word, parent_index, child_h):
+    def recursive_unit(self, parent_xe, child_h, child_xe):
         #attention
-        parent_xe = self.E_bu[:, parent_index].mul(torch.tensor(parent_word)).sum(dim=1)
-        query = F.sigmoid(parent_xe.mul(self.WQ.t()).sum(dim=1))
-        key = child_h.mm(self.WK)
-        val = child_h.mm(self.WV)
-        attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
-        h_tilde = attention.mul(val.t()).sum(dim=1)
+        if child_xe.dim() == 1:
+            h_tilde = child_h
+        else:
+            query = parent_xe.mul(self.WQ).sum(dim=1)
+            key = child_xe.mm(self.WK)
+            # val = child_h.mm(self.WV)
+            attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
+            h_tilde = attention.mul(child_h.t()).sum(dim=1)
         #gru
         z_bu = F.sigmoid(self.W_z_bu.mul(parent_xe).sum(dim=1) + self.U_z_bu.mul(h_tilde).sum(dim=1) + self.b_z_bu)
         r_bu = F.sigmoid(self.W_r_bu.mul(parent_xe).sum(dim=1) + self.U_r_bu.mul(h_tilde).sum(dim=1) + self.b_r_bu)
@@ -177,29 +179,47 @@ class AttentionGRU(nn.Module):
         h_bu = z_bu * h_tilde + (1 - z_bu) * c
         return h_bu
 
+    def Word2Vec(self, word, index):
+        vec = self.E_bu[:, index].mul(torch.tensor(word)).sum(dim=1)
+        return vec
+
+    def Words2Vecs(self, words, indexs):
+        words = torch.tensor(words)
+        tmp = torch.tensor([])
+        for i in range(words.size()[0]):
+            tmp = torch.cat((tmp, self.Word2Vec(words[i], indexs[i])), dim=0)
+        vec = tmp.view(words.size()[0], -1)
+        return vec
+
     def compute_tree_states(self, x_word, x_index, tree):
         num_parents = tree.shape[0]
         num_nodes = x_word.shape[0]
         num_leaves = num_nodes -num_parents
         leaf_h = list(map(
-                            lambda x_idxs: self.recursive_unit(x_idxs[0], x_idxs[1], torch.zeros([self.degree, self.hidden_dim])).tolist(),
+                            lambda x_idxs: self.recursive_unit( self.Word2Vec(x_idxs[0], x_idxs[1]), torch.zeros([self.degree, self.hidden_dim]), torch.zeros([self.degree, self.hidden_dim])).tolist(),
                                 zip(x_word[:num_leaves], x_index[:num_leaves])
                         )
                     )
 
         init_node_h = torch.tensor(leaf_h)
 
-        def _recurrence(x_word, x_index, tree, idx, node_h):
+        def _recurrence(x_word, indexs, tree, idx, node_h):
             child_exists = (tree[:-1] > -1).nonzero()
-            child_h = node_h[ tree[child_exists] ]
-            parent_h = self.recursive_unit(x_word, x_index, child_h)
+            if len(tree[child_exists]) == 1:
+                child_xes = self.Word2Vec(x_word[ tree[child_exists][0] ], indexs[ tree[child_exists][0] ])
+                child_h = node_h[tree[child_exists][0]]
+            else:
+                child_xes = self.Words2Vecs(x_word[ tree[child_exists] ], indexs[ tree[child_exists] ])
+                child_h = node_h[tree[child_exists]]
+            parent_xe = self.Word2Vec(x_word[num_leaves+idx], indexs[num_leaves+idx])
+            parent_h = self.recursive_unit(parent_xe, child_h, child_xes)
             node_h = torch.cat((node_h, parent_h.view(1, -1)), 0)
             return node_h, parent_h
 
         node_h = init_node_h
         root_state = []
-        for idx, (words, indexs, thislayer) in enumerate(zip(x_word[num_leaves:], x_index[num_leaves:], tree)):
-            node_h, parent_h = _recurrence(words, indexs, thislayer, idx, node_h)
+        for idx, thislayer in enumerate(tree):
+            node_h, parent_h = _recurrence(x_word, x_index, thislayer, idx, node_h)
             if idx == num_parents-1:
                 root_state = parent_h
         return root_state
@@ -220,7 +240,7 @@ class AttentionGRU(nn.Module):
         return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
 
 class MultiAttentionGRU(nn.Module):
-    def __init__(self, word_dim, hidden_dim=5, Nclass=4,
+    def __init__(self, word_dim, hidden_dim=64, Nclass=4,
                  degree=2, momentum=0.9, multi_head=5,
                  trainable_embeddings=True,
                  labels_on_nonroot_nodes=False,
@@ -253,6 +273,8 @@ class MultiAttentionGRU(nn.Module):
         self.WK = nn.parameter.Parameter(self.init_matrix([self.multi_head, self.hidden_dim, self.hidden_dim]))
         self.WV = nn.parameter.Parameter(self.init_matrix([self.multi_head, self.hidden_dim, self.hidden_dim]))
         self.WO = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim*self.multi_head]))
+
+        self.LM = nn.LayerNorm(self.hidden_dim)
         # self.Drop = nn.Dropout(0.5)
     def forward(self, x_word, x_index, tree, y):
         final_state = self.compute_tree_states(x_word, x_index, tree)
@@ -277,7 +299,6 @@ class MultiAttentionGRU(nn.Module):
         val = child_h.mm(self.WV[0])
         attention = F.softmax((query / np.sqrt(self.hidden_dim * 1.0)).mul(key).sum(dim=1))
         h_tilde = attention.mul(val.t()).sum(dim=1)
-
         for i in range(1, self.multi_head):
             query = parent_xe.mul(self.WQ[i]).sum(dim=1)
             key = child_xe.mm(self.WK[i])
@@ -285,15 +306,19 @@ class MultiAttentionGRU(nn.Module):
             attention = F.softmax((query * np.sqrt(self.hidden_dim * 1.0)).mul(key).sum(dim=1))
             tmp = attention.mul(val.t()).sum(dim=1)
             h_tilde = torch.cat((h_tilde, tmp), dim=0)
-        return self.WO.mul(h_tilde).sum(dim=1)
+        return h_tilde
 
 
     def recursive_unit(self, parent_xe, child_h, child_xe):
         #attention
         if child_xe.dim() ==1:
-            h_tilde = child_h
+            child_h_XL = torch.cat(tuple((child_h.mul(self.WV[i].t()).sum(dim=1) for i in range(self.multi_head))), 0)
+            h_tilde = self.WO.mul(child_h_XL).sum(dim=1)
         else:
-            h_tilde = self.AttentionedSumOfChilds(parent_xe, child_h, child_xe)
+            child_h_XL = self.AttentionedSumOfChilds(parent_xe, child_h, child_xe)
+            h_tilde = self.WO.mul(child_h_XL).sum(dim=1)
+
+        h_tilde = self.LM(h_tilde)
         #gru
         z_bu = F.sigmoid(self.W_z_bu.mul(parent_xe).sum(dim=1) + self.U_z_bu.mul(h_tilde).sum(dim=1) + self.b_z_bu)
         r_bu = F.sigmoid(self.W_r_bu.mul(parent_xe).sum(dim=1) + self.U_r_bu.mul(h_tilde).sum(dim=1) + self.b_r_bu)
