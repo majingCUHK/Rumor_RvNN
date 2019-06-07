@@ -177,15 +177,16 @@ tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, 
 ## 2. ini RNN model
 t0 = time.time()
 # model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU
-# model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU
+# model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU,最好效果７２左右
 model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU,最好效果在59左右
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
+# model = BU_Transformer.TreeLSTM(vocabulary_size, hidden_dim, Nclass)  #TreeLSTM
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 
 ## 3. looping SGD
-paras = [{'param':parameter, 'lr':0.05, 'weight_decay':0.001} if not 'E_bu' in name else {'param':parameter, 'lr':0.01} for name, parameter in model.named_parameters()]
-optimizer = optim.Adam(model.parameters())
+paras = [{'param':parameter, 'lr':0.1, 'weight_decay':0.001} if not 'E_bu' in name else {'param':parameter, 'lr':0.05} for name, parameter in model.named_parameters()]
+optimizer = optim.Adagrad(model.parameters())
 losses_5, losses = [], []
 num_examples_seen = 0
 batch_size = 5

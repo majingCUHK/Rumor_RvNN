@@ -41,13 +41,13 @@ def gen_nn_inputs(root_node, max_degree=None, only_leaves_have_vals=True, with_l
         return (np.array(x, dtype='int32'),
                 np.array(tree, dtype='int32'),
                 np.array(labels, dtype=theano.config.floatX),
-                np.array(labels_exist, dtype=theano.config.floatX))'''   
+                np.array(labels_exist, dtype=theano.config.floatX))'''
     ##### debug here #####
     '''ls = []
     for x in X_word:
         l = len(x)
         if not l in ls: ls.append(l)
-    print ls'''        
+    print ls'''
     return (np.array(X_word, dtype='float32'),
             np.array(X_index, dtype='int32'),
             np.array(tree, dtype='int32'))
@@ -275,7 +275,7 @@ class MultiAttentionGRU(nn.Module):
         self.WO = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim*self.multi_head]))
 
         self.LM = nn.LayerNorm(self.hidden_dim)
-        # self.Drop = nn.Dropout(0.5)
+        self.Drop = nn.Dropout(0.5)
     def forward(self, x_word, x_index, tree, y):
         final_state = self.compute_tree_states(x_word, x_index, tree)
         pred, loss = self.predAndLoss(final_state, y)
@@ -296,15 +296,15 @@ class MultiAttentionGRU(nn.Module):
     def AttentionedSumOfChilds(self, parent_xe, child_h, child_xe):
         query = parent_xe.mul(self.WQ[0]).sum(dim=1)
         key = torch.tensor(child_xe).mm(self.WK[0])
-        val = child_h.mm(self.WV[0])
+        # val = child_h.mm(self.WV[0])
         attention = F.softmax((query / np.sqrt(self.hidden_dim * 1.0)).mul(key).sum(dim=1))
-        h_tilde = attention.mul(val.t()).sum(dim=1)
+        h_tilde = attention.mul(child_h.t()).sum(dim=1)
         for i in range(1, self.multi_head):
             query = parent_xe.mul(self.WQ[i]).sum(dim=1)
             key = child_xe.mm(self.WK[i])
-            val = child_h.mm(self.WV[i])
+            # val = child_h.mm(self.WV[i])
             attention = F.softmax((query * np.sqrt(self.hidden_dim * 1.0)).mul(key).sum(dim=1))
-            tmp = attention.mul(val.t()).sum(dim=1)
+            tmp = attention.mul(child_h.t()).sum(dim=1)
             h_tilde = torch.cat((h_tilde, tmp), dim=0)
         return h_tilde
 
@@ -312,7 +312,7 @@ class MultiAttentionGRU(nn.Module):
     def recursive_unit(self, parent_xe, child_h, child_xe):
         #attention
         if child_xe.dim() ==1:
-            child_h_XL = torch.cat(tuple((child_h.mul(self.WV[i].t()).sum(dim=1) for i in range(self.multi_head))), 0)
+            child_h_XL = torch.cat(tuple((child_h for i in range(self.multi_head))), 0)
             h_tilde = self.WO.mul(child_h_XL).sum(dim=1)
         else:
             child_h_XL = self.AttentionedSumOfChilds(parent_xe, child_h, child_xe)
@@ -323,7 +323,7 @@ class MultiAttentionGRU(nn.Module):
         z_bu = F.sigmoid(self.W_z_bu.mul(parent_xe).sum(dim=1) + self.U_z_bu.mul(h_tilde).sum(dim=1) + self.b_z_bu)
         r_bu = F.sigmoid(self.W_r_bu.mul(parent_xe).sum(dim=1) + self.U_r_bu.mul(h_tilde).sum(dim=1) + self.b_r_bu)
         c = F.tanh(self.W_h_bu.mul(parent_xe).sum(dim=1) + self.U_h_bu.mul(h_tilde * r_bu).sum(dim=1) + self.b_h_bu)
-        h_bu = z_bu * h_tilde + (1 - z_bu) * c
+        h_bu = z_bu * h_tilde + (1 - z_bu) * self.Drop(c)
         return h_bu
 
     def compute_tree_states(self, x_word, x_index, tree):
@@ -372,6 +372,7 @@ class MultiAttentionGRU(nn.Module):
 
     def predict_up(self, x_word, x_index, x_tree):
         final_state = self.compute_tree_states(x_word, x_index, x_tree)
+        final_state = self.Drop(final_state)
         return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
 
 class MultiAttentionFCN(nn.Module):
@@ -478,3 +479,57 @@ class MultiAttentionFCN(nn.Module):
     def predict_up(self, x_word, x_index, x_tree):
         final_state = self.compute_tree_states(x_word, x_index, x_tree)
         return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
+
+class TreeLSTM_2ary(nn.Module):
+
+    def __init__(self, hiddendim=50, Nclass=5, max_degree=2, worddim=300):
+        super(TreeLSTM_2ary, self).__init__()
+        self.hiddendim = hiddendim
+        self.Nclass = Nclass
+        self.degree = max_degree
+        self.word_dim = worddim
+        # parameters for the model
+        self.W_i = nn.parameter.Parameter(self.init_matrix([self.hiddendim, self.word_dim]))
+        self.U_i = nn.parameter.Parameter(self.init_matrix([self.degree, self.hiddendim, self.hiddendim]))
+        self.b_i = nn.parameter.Parameter(self.init_vector([self.hiddendim]))
+
+        self.W_f = nn.parameter.Parameter(self.init_matrix([self.hiddendim, self.word_dim]))
+        self.U_f = nn.parameter.Parameter(
+            self.init_matrix([self.degree, self.degree, self.hiddendim, self.hiddendim]))
+        self.b_f = nn.parameter.Parameter(self.init_vector([self.hiddendim]))
+
+        self.W_o = nn.parameter.Parameter(self.init_matrix([self.hiddendim, self.word_dim]))
+        self.U_o = nn.parameter.Parameter(self.init_matrix([self.degree, self.hiddendim, self.hiddendim]))
+        self.b_o = nn.parameter.Parameter(self.init_vector([self.hiddendim]))
+
+        self.W_u = nn.parameter.Parameter(self.init_matrix([self.hiddendim, self.word_dim]))
+        self.U_u = nn.parameter.Parameter(self.init_matrix([self.degree, self.hiddendim, self.hiddendim]))
+        self.b_u = nn.parameter.Parameter(self.init_vector([self.hiddendim]))
+
+        self.W_s = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hiddendim]))
+        self.b_s = nn.parameter.Parameter(self.init_vector([self.Nclass]))
+
+        self.drop = nn.Dropout(p=0.5)
+
+    def recursive_unit(self, parent_word, child_hs, child_cells):
+        def manyU_mul_manyH(manyU):
+            sum = manyU[0].mul(child_hs[0]).sum(dim=1)
+            for i in range(1, self.degree):
+                sum += manyU[i].mul(child_hs[i]).sum(dim=1)
+            return sum
+
+        def forget_manycells(f_gates):
+            sum = f_gates[0].mul(child_cells[0])
+            for i in range(1, self.degree):
+                sum += f_gates[i].mul(child_cells[i])
+            return sum
+
+        input = F.sigmoid(self.W_i.mul(parent_word).sum(dim=1) + manyU_mul_manyH(self.U_i) + self.b_i)
+        output = F.sigmoid(self.W_o.mul(parent_word).sum(dim=1) + manyU_mul_manyH(self.U_o) + self.b_o)
+        utility = F.tanh(self.W_u.mul(parent_word).sum(dim=1) + manyU_mul_manyH(self.U_u) + self.b_u)
+        forgets = [F.sigmoid(self.W_f.mul(parent_word).sum(dim=1) + manyU_mul_manyH(this_U_f) + self.b_f) for
+                   this_U_f in self.U_f]
+        parent_cell = input.mul(utility) + forget_manycells(forgets)
+        parent_h = output.mul(F.tanh(parent_cell))
+
+        return parent_h, parent_cell
