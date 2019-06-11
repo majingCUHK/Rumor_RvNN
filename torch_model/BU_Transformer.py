@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import Transformer_Utils
+import copy
 
 class Node_tweet(object):
     def __init__(self, idx=None):
@@ -373,6 +375,81 @@ class MultiAttentionGRU(nn.Module):
     def predict_up(self, x_word, x_index, x_tree):
         final_state = self.compute_tree_states(x_word, x_index, x_tree)
         final_state = self.Drop(final_state)
+        return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
+
+class TransformerEncoder(nn.Module):
+    def __init__(self, word_dim, hidden_dim=64, Nclass=4,
+                 degree=2, momentum=0.9, multi_head=8,
+                 trainable_embeddings=True,
+                 labels_on_nonroot_nodes=False,
+                 irregular_tree=True):
+        super(TransformerEncoder, self).__init__()
+        assert word_dim > 1 and hidden_dim > 1
+        self.word_dim = word_dim
+        self.hidden_dim = hidden_dim
+        self.Nclass = Nclass
+        self.degree = degree  # 这里比较奇怪的是，在创建模型的时候是没有对degree进行赋值的
+        self.momentum = momentum
+        self.irregular_tree = irregular_tree
+        self.multi_head = multi_head
+
+        self.E_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.word_dim]), requires_grad=True)
+
+        c = copy.deepcopy
+        attn = Transformer_Utils.MultiHeadedAttention(self.multi_head, self.hidden_dim)
+        ffw = Transformer_Utils.PositionwiseFeedForward(self.hidden_dim, self.hidden_dim*2, 0.1)
+
+        self.encoder = Transformer_Utils.Encoder(Transformer_Utils.EncoderLayer(self.hidden_dim, c(attn), c(ffw), 0.1), 2)
+        self.decoder = Transformer_Utils.Decoder(Transformer_Utils.DecoderLayer(self.hidden_dim, c(attn), c(attn), c(ffw), 0.1), 2),
+
+
+    def forward(self, x_word, x_index, tree, y):
+        final_state = self.compute_tree_states(x_word, x_index, tree)
+        pred, loss = self.predAndLoss(final_state, y)
+        return pred, loss
+
+    def compute_tree_states(self, x_word, x_index, tree):
+        num_parents = tree.shape[0]
+        num_nodes = x_word.shape[0]
+        num_leaves = num_nodes - num_parents
+        leaf_h = list(map(
+                            lambda x_idxs: self.E_bu[:, x_idxs[1]].mul(x_idxs[0]).sum(dim=1).tolist(),
+                                zip(x_word[:num_leaves], x_index[:num_leaves])
+                        )
+                    )
+
+        init_node_h = torch.tensor(leaf_h)
+
+        def _recurrence(x_word, x_index, tree, idx, node_h):
+            child_exists = (tree[:-1] > -1).nonzero()
+            child_h = node_h[ tree[child_exists] ]
+            memory = self.encoder(child_h, mask=None)
+            parent_xe = self.E_bu[:, x_index].mul(torch.tensor(x_word)).sum(dim=1)
+            parent_h = self.decoder(parent_xe, memory, None, None)
+            node_h = torch.cat((node_h, parent_h.view(1, -1)), 0)
+            return node_h, parent_h
+
+        node_h = init_node_h
+        root_state = []
+        for idx, (words, indexs, thislayer) in enumerate(zip(x_word[num_leaves:], x_index[num_leaves:], tree)):
+            node_h, parent_h = _recurrence(words, indexs, thislayer, idx, node_h)
+            if idx == num_parents-1:
+                root_state = parent_h
+        return root_state
+
+    def predAndLoss(self, final_state, ylabel):
+        pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
+        loss = (torch.tensor(ylabel, dtype=torch.float).cuda()-pred).pow(2).sum()
+        return pred, loss
+
+    def init_vector(self, shape):
+        return torch.zeros(shape).cuda()
+
+    def init_matrix(self, shape):
+        return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32')).cuda()
+
+    def predict_up(self, x_word, x_index, x_tree):
+        final_state = self.compute_tree_states(x_word, x_index, x_tree)
         return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
 
 class MultiAttentionFCN(nn.Module):

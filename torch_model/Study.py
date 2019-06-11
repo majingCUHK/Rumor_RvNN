@@ -79,8 +79,8 @@ class EncoderLayer(nn.Module):
         self.sublayer = clones(SublayerConnection(size, dropout), 2)
         self.size = size
 
-    def forward(self, x, mask):　#Layer本身是包含了LayerNorm和dropout的
-        "Follow Figure 1 (left) for connections."　#相当于往前传的过程中，做了两个事情，一个事情是self-attention, 一个事情是feed_forward
+    def forward(self, x, mask):#Layer本身是包含了LayerNorm和dropout的
+        "Follow Figure 1 (left) for connections." #相当于往前传的过程中，做了两个事情，一个事情是self-attention, 一个事情是feed_forward
         x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, mask))
         return self.sublayer[1](x, self.feed_forward)
 
@@ -91,7 +91,7 @@ class MultiHeadedAttention(nn.Module):
         assert d_model % h == 0 
         # We assume d_v always equals d_k
         self.d_k = d_model // h
-        self.h = h　#head
+        self.h = h #head
         self.linears = clones(nn.Linear(d_model, d_model), 4) #linears是一个四层的全连接层
         self.attn = None
         self.dropout = nn.Dropout(p=dropout)

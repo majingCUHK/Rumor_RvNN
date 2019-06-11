@@ -16,6 +16,7 @@ import BU_Transformer
 import torch.optim as optim
 import torch
 import numpy as np
+import torch.nn as nn
 from numpy.testing import assert_array_almost_equal
 
 import time
@@ -178,9 +179,14 @@ tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, 
 t0 = time.time()
 # model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU,最好效果７２左右
-model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU,最好效果在59左右
+# model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU,最好效果在59左右
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
 # model = BU_Transformer.TreeLSTM(vocabulary_size, hidden_dim, Nclass)  #TreeLSTM
+model = BU_Transformer.TransformerEncoder(vocabulary_size, hidden_dim, Nclass)
+for p in model.parameters():
+    if p.dim() > 1:
+        nn.init.xavier_uniform(p)
+
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 
