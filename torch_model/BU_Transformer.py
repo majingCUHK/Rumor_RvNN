@@ -548,10 +548,10 @@ class MultiAttentionFCN(nn.Module):
         return pred, loss
 
     def init_vector(self, shape):
-        return torch.zeros(shape).cuda()
+        return torch.zeros(shape)
 
     def init_matrix(self, shape):
-        return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32')).cuda()
+        return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32'))
 
     def predict_up(self, x_word, x_index, x_tree):
         final_state = self.compute_tree_states(x_word, x_index, x_tree)
