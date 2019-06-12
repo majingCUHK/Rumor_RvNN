@@ -576,8 +576,9 @@ class TransformerEncoderPoolV2(nn.Module):
             parent_h = self.decoder(parent_xe, memory, None, None)
             return parent_h
 
-        node_h = list(map(
+        node_h = torch.tensor(list(map(
                     lambda params: _recurrence(params[0], params[1], params[2], 0, words_xe), zip(x_word[num_leaves:], x_index[num_leaves:], tree)
+                )
             )
         )
         return node_h[num_leaves:].max(dim=0)[0]
