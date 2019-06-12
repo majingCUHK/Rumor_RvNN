@@ -185,7 +185,8 @@ t0 = time.time()
 # model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU,最好效果在59左右
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
 # model = BU_Transformer.TreeLSTM(vocabulary_size, hidden_dim, Nclass)  #TreeLSTM
-model = BU_Transformer.TransformerEncoder(vocabulary_size, hidden_dim, Nclass)
+# model = BU_Transformer.TransformerEncoder(vocabulary_size, hidden_dim, Nclass)
+model = BU_Transformer.TransformerEncoderPoolV2(vocabulary_size, hidden_dim, Nclass)
 for p in model.parameters():
     if p.dim() > 1:
         nn.init.xavier_uniform(p)

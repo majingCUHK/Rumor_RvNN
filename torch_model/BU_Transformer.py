@@ -377,7 +377,7 @@ class MultiAttentionGRU(nn.Module):
         final_state = self.Drop(final_state)
         return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
 
-class TransformerEncoder(nn.Module): # performance: twitter15 (73.81%) twitter16()
+class TransformerEncoder(nn.Module): # performance: twitter15 (73.81%) twitter16(74.49%)
     def __init__(self, word_dim, hidden_dim=64, Nclass=4,
                  degree=2, momentum=0.9, multi_head=8,
                  trainable_embeddings=True,
@@ -454,7 +454,7 @@ class TransformerEncoder(nn.Module): # performance: twitter15 (73.81%) twitter16
     #     final_state = self.compute_tree_states(x_word, x_index, x_tree)
     #     return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
 
-class TransformerEncoderPoolV1(nn.Module):
+class TransformerEncoderPoolV1(nn.Module): #twitter16(75.79%) ['acc:', 0.7579, 'Favg:', 0.7567, 0.6251, 0.3037, 'C1:', 0.8421, 0.9167, 0.44, 0.5946, 'C2:', 0.8211, 0.6889, 0.9118, 0.7848, 'C3:', 0.9684, 0.9333, 0.875, 0.9032, 'C4:', 0.8842, 0.6957, 0.8, 0.7442]
     def __init__(self, word_dim, hidden_dim=64, Nclass=4,
                  degree=2, momentum=0.9, multi_head=8,
                  trainable_embeddings=True,
@@ -561,11 +561,12 @@ class TransformerEncoderPoolV2(nn.Module):
         num_parents = tree.shape[0]
         num_nodes = x_word.shape[0]
         num_leaves = num_nodes - num_parents
-        words_xe = list(map(
+        words_xe = torch.tensor(list(map(
                             lambda x_idxs: self.E_bu[:, x_idxs[1]].mul(torch.from_numpy(x_idxs[0])).sum(dim=1).tolist(),
                                 zip(x_word, x_index)
                         )
                     )
+        )
 
         def _recurrence(x_word, x_index, tree, idx, node_h):
             child_exists = (tree[:-1] > -1).nonzero()
@@ -577,11 +578,11 @@ class TransformerEncoderPoolV2(nn.Module):
             return parent_h
 
         node_h = torch.tensor(list(map(
-                    lambda params: _recurrence(params[0], params[1], params[2], 0, words_xe), zip(x_word[num_leaves:], x_index[num_leaves:], tree)
+                    lambda params: _recurrence(params[0], params[1], params[2], 0, words_xe).tolist(), zip(x_word[num_leaves:], x_index[num_leaves:], tree)
                 )
             )
         )
-        return node_h[num_leaves:].max(dim=0)[0]
+        return node_h.max(dim=0)[0]
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
