@@ -394,6 +394,8 @@ class TransformerEncoder(nn.Module):
         self.multi_head = multi_head
 
         self.E_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.word_dim]), requires_grad=True)
+        self.W_out_bu = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
+        self.b_out_bu = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
 
         c = copy.deepcopy
         attn = Transformer_Utils.MultiHeadedAttention(self.multi_head, self.hidden_dim)
@@ -406,7 +408,7 @@ class TransformerEncoder(nn.Module):
     def forward(self, x_word, x_index, tree, y):
         final_state = self.compute_tree_states(x_word, x_index, tree)
         pred, loss = self.predAndLoss(final_state, y)
-        return pred, loss
+        return loss
 
     def compute_tree_states(self, x_word, x_index, tree):
         num_parents = tree.shape[0]
@@ -441,7 +443,7 @@ class TransformerEncoder(nn.Module):
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
-        loss = (torch.tensor(ylabel, dtype=torch.float).cuda()-pred).pow(2).sum()
+        loss = (torch.tensor(ylabel, dtype=torch.float)-pred).pow(2).sum()
         return pred, loss
 
     def init_vector(self, shape):
