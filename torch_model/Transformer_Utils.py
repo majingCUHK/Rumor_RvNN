@@ -152,7 +152,7 @@ class DecoderLayer(nn.Module):
     def forward(self, x, memory, src_mask, tgt_mask):
         "Follow Figure 1 (right) for connections."
         m = memory
-        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, tgt_mask))
+        x = self.sublayer[0](x, lambda x: self.self_attn(x.unsqueeze(0), x.unsqueeze(0), x.unsqueeze(0), tgt_mask))
         x = self.sublayer[1](x, lambda x: self.src_attn(x, m, m, src_mask))
         return self.sublayer[2](x, self.feed_forward)
 
