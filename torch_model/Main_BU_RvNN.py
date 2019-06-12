@@ -25,7 +25,7 @@ import random
 from evaluate import *
 
 obj = "Twitter16" # choose dataset, you can choose either "Twitter15" or "Twitter16"
-fold = "3" # fold index, choose from 0-4
+fold = "2" # fold index, choose from 0-4
 tag = ""
 vocabulary_size = 5000
 hidden_dim = 64

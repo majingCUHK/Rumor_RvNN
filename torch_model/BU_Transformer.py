@@ -574,13 +574,13 @@ class TransformerEncoderPoolV2(nn.Module):
             parent_xe = self.E_bu[:, x_index].mul(torch.tensor(x_word)).sum(dim=1)
             # sys.exit(0)
             parent_h = self.decoder(parent_xe, memory, None, None)
-            node_h = torch.cat((node_h, parent_h.view(1, -1)), 0)
-            return node_h, parent_h
+            return parent_h
 
-        node_h = init_node_h
-        for idx, (words, indexs, thislayer) in enumerate(zip(x_word[num_leaves:], x_index[num_leaves:], tree)):
-            node_h, parent_h = _recurrence(words, indexs, thislayer, idx, node_h)
-        return node_h.max(dim=0)[0]
+        node_h = list(map(
+                    lambda params: _recurrence(params[0], params[1], params[2], 0, words_xe), zip(x_word[num_leaves:], x_index[num_leaves:], tree)
+            )
+        )
+        return node_h[num_leaves:].max(dim=0)[0]
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
