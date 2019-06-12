@@ -13,14 +13,18 @@ def clones(module, N):
 
 def attention(query, key, value, mask=None, dropout=None):
     "Compute 'Scaled Dot Product Attention'"
-    d_k = query.size(-1)
+    # query = [head, nbatch, d_k] , key = [head, nbatch, d_k], scores = [head, nbatch, n_batch], x= [head, nbatch, nbatch][head, nbatch, d_k]
+    d_k = query.size(-1) #the dim of the query
+    head = query.size(1)
     scores = torch.matmul(query, key.transpose(-2, -1)) \
              / math.sqrt(d_k)
+    print("scores shape:", scores)
     if mask is not None:
         scores = scores.masked_fill(mask == 0, -1e9)
-    p_attn = F.softmax(scores, dim = -1)
-    if dropout is not None: # drop out the attention is confusing
-        p_attn = dropout(p_attn)
+    p_attn = F.softmax(scores, dim=-1)
+    print("p_attn:", p_attn)
+    # if dropout is not None: # drop out the attention is confusing
+    #     p_attn = dropout(p_attn)
     return torch.matmul(p_attn, value), p_attn
 
 def subsequent_mask(size):
@@ -110,23 +114,27 @@ class MultiHeadedAttention(nn.Module):
 
     def forward(self, query, key, value, mask=None):
         "Implements Figure 2"
+
         if mask is not None:
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
         nbatches = query.size(0)
 
+        print("pre.....q, k, v", query.shape, key.shape, value.shape)
         # 1) Do all the linear projections in batch from d_model => h x d_k
         query, key, value = \
-            [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
-             for l, x in zip(self.linears, (query, key, value))]
-
+            [l(x).view(nbatches, self.h, self.d_k).transpose(0, 1)
+             for l, x in zip(self.linears, (query, key, value))]  # q=[nbatch, d_model], qW=[nbatch, d_model]-> [nbatch, head, d_k] -> [head, batch, d_k]
+        print("q, k, v", query.shape, key.shape, value.shape)
         # 2) Apply attention on all the projected vectors in batch.
         x, self.attn = attention(query, key, value, mask=mask,
                                  dropout=self.dropout)
-
+        print("mul_atte:", x.shape)
         # 3) "Concat" using a view and apply a final linear.
-        x = x.transpose(1, 2).contiguous() \
-            .view(nbatches, -1, self.h * self.d_k)
+        # x = [head, nbatch, d_k] -> [nbatch, head, d_k] -> [nbatch, head*d_k]
+        x = x.transpose(0, 1).contiguous() \
+            .view(nbatches, self.h * self.d_k)
+        print("x_shape:", x.shape)
         return self.linears[-1](x)
 
 
