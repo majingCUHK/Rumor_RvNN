@@ -115,7 +115,6 @@ class RvNN(nn.Module):
         return h_td
 
     def compute_tree_states(self, x_word, x_index, tree, leaf_idxs):
-
         def _recurrence(x_word, x_index, tree, node_h):
             parent_h = node_h[tree[0]]
             child_h = self.recursive_unit(x_word, x_index, parent_h)

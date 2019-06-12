@@ -24,7 +24,7 @@ import datetime
 import random
 from evaluate import *
 
-obj = "Twitter15" # choose dataset, you can choose either "Twitter15" or "Twitter16"
+obj = "Twitter16" # choose dataset, you can choose either "Twitter15" or "Twitter16"
 fold = "3" # fold index, choose from 0-4
 tag = ""
 vocabulary_size = 5000
@@ -165,7 +165,10 @@ def loadData():
     print("case 0:", tree_train[0][0], word_train[0][0], index_train[0][0])
     return tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, y_test
 
-##################################### MAIN ####################################        
+##################################### MAIN ####################################
+def CompLoss(pred, ylabel):
+    return (torch.tensor(ylabel, dtype=torch.float) - pred).pow(2).sum()
+
 ## 1. load tree & word & index & label
 tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, y_test = loadData()
 # max_degree = max( list(
@@ -199,12 +202,14 @@ batch_size = 5
 indexs = [i for i in range(len(y_train))]
 for epoch in range(Nepoch):
     ## one SGD
-    random.shuffle(indexs) 
+    model.train()
+    random.shuffle(indexs)
     for i in range(0, len(indexs), batch_size):
         batch_indexs = indexs[i:min(i+batch_size, len(indexs))]
         loss = torch.tensor(0.0)
         for i in batch_indexs:
-            loss += model.forward(word_train[i], index_train[i], tree_train[i], y_train[i])
+            pred = model.forward(word_train[i], index_train[i], tree_train[i])
+            loss += CompLoss(pred, y_train[i])
         loss = loss/(1.0*len(batch_indexs))
         optimizer.zero_grad()
         loss.backward()
@@ -213,7 +218,8 @@ for epoch in range(Nepoch):
         num_examples_seen += 1
         print("epoch=%d: idx=%d,loss=%f"%( epoch, i, np.mean(losses)))
     sys.stdout.flush()
-    
+
+    model.eval()
     ## cal loss & evaluate
     if epoch % 1 == 0:
        losses_5.append((num_examples_seen, np.mean(losses))) 
@@ -222,7 +228,7 @@ for epoch in range(Nepoch):
        sys.stdout.flush()
        prediction = []
        for j in range(len(y_test)):
-           prediction.append(model.predict_up(word_test[j], index_test[j], tree_test[j]).data.tolist() )
+           prediction.append(model.forward(word_test[j], index_test[j], tree_test[j]).data.tolist() )
        print("predictions:", prediction)
        res = evaluation_4class(prediction, y_test) 
        print('results:', res)
