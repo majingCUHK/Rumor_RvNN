@@ -180,13 +180,13 @@ tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, 
 # sys.exit(0)
 ## 2. ini RNN model
 t0 = time.time()
-# model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU
+model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU 改用maxpooling之后，twitter16上的最好效果达到78.57%
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU,最好效果７２左右
 # model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU,最好效果在59左右
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
 # model = BU_Transformer.TreeLSTM(vocabulary_size, hidden_dim, Nclass)  #TreeLSTM
 # model = BU_Transformer.TransformerEncoder(vocabulary_size, hidden_dim, Nclass)
-model = BU_Transformer.TransformerEncoderPoolV2(vocabulary_size, hidden_dim, Nclass)
+# model = BU_Transformer.TransformerEncoderPoolV2(vocabulary_size, hidden_dim, Nclass)
 for p in model.parameters():
     if p.dim() > 1:
         nn.init.xavier_uniform(p)
@@ -195,11 +195,14 @@ t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 
 ## 3. looping SGD
+
 paras = [{'param':parameter, 'lr':0.1, 'weight_decay':0.001} if not 'E_bu' in name else {'param':parameter, 'lr':0.05} for name, parameter in model.named_parameters()]
 optimizer = optim.Adagrad(model.parameters())
 losses_5, losses = [], []
 num_examples_seen = 0
 batch_size = 5
+best_test_acc = 0.0
+
 indexs = [i for i in range(len(y_train))]
 for epoch in range(Nepoch):
     ## one SGD
@@ -230,8 +233,11 @@ for epoch in range(Nepoch):
        prediction = []
        for j in range(len(y_test)):
            prediction.append(model.forward(word_test[j], index_test[j], tree_test[j]).data.tolist() )
-       print("predictions:", prediction)
-       res = evaluation_4class(prediction, y_test) 
+       res = evaluation_4class(prediction, y_test)
+       if best_test_acc < res[1]:
+           best_test_acc = res[1]
+           print("best_performance:")
+           torch.save(model, "../resource/GRU_%.3f.pkl"%best_test_acc)
        print('results:', res)
        sys.stdout.flush()
        ## Adjust the learning rate if loss increases

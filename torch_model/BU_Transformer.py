@@ -525,7 +525,7 @@ class TransformerEncoderPoolV1(nn.Module): #twitter16(75.79%) ['acc:', 0.7579, '
         return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32'))
 
 
-class TransformerEncoderPoolV2(nn.Module):
+class TransformerEncoderPoolV2(nn.Module): #这个模型训练不出来，说明传播过程确实很重要
     def __init__(self, word_dim, hidden_dim=64, Nclass=4,
                  degree=2, momentum=0.9, multi_head=8,
                  trainable_embeddings=True,
@@ -542,7 +542,7 @@ class TransformerEncoderPoolV2(nn.Module):
         self.multi_head = multi_head
 
         self.E_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.word_dim]), requires_grad=True)
-        self.W_out_bu = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
+        self.W_out_bu = nn.parameter.Parameter(self.init_matrix([self.Nclass, 2*self.hidden_dim]), requires_grad=True)
         self.b_out_bu = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
 
         c = copy.deepcopy
@@ -555,6 +555,7 @@ class TransformerEncoderPoolV2(nn.Module):
 
     def forward(self, x_word, x_index, tree):
         final_state = self.compute_tree_states(x_word, x_index, tree)
+        # print("w_shape:", self.W_out_bu.shape, "\n final_state_shape:", final_state.shape)
         return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) + self.b_out_bu)
 
     def compute_tree_states(self, x_word, x_index, tree):
@@ -582,7 +583,7 @@ class TransformerEncoderPoolV2(nn.Module):
                 )
             )
         )
-        return node_h.max(dim=0)[0]
+        return torch.cat((node_h.max(dim=0)[0], node_h.min(dim=0)[0]), dim=1)
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
