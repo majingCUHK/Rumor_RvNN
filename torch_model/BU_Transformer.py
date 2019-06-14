@@ -456,7 +456,7 @@ class TransformerEncoder(nn.Module): # performance: twitter15 (73.81%) twitter16
 
 class TransformerEncoderPoolV1(nn.Module): #twitter16(75.79%) ['acc:', 0.7579, 'Favg:', 0.7567, 0.6251, 0.3037, 'C1:', 0.8421, 0.9167, 0.44, 0.5946, 'C2:', 0.8211, 0.6889, 0.9118, 0.7848, 'C3:', 0.9684, 0.9333, 0.875, 0.9032, 'C4:', 0.8842, 0.6957, 0.8, 0.7442]
     def __init__(self, word_dim, hidden_dim=64, Nclass=4,
-                 degree=2, momentum=0.9, multi_head=8,
+                 degree=2, momentum=0.9, multi_head=4,
                  trainable_embeddings=True,
                  labels_on_nonroot_nodes=False,
                  irregular_tree=True):
@@ -475,12 +475,14 @@ class TransformerEncoderPoolV1(nn.Module): #twitter16(75.79%) ['acc:', 0.7579, '
         self.b_out_bu = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
 
         c = copy.deepcopy
-        attn = Transformer_Utils.MultiHeadedAttention(self.multi_head, self.hidden_dim)
+        # attn = Transformer_Utils.MultiHeadedAttention(self.multi_head, self.hidden_dim)
+        attn = Transformer_Utils.
         ffw = Transformer_Utils.PositionwiseFeedForward(self.hidden_dim, self.hidden_dim*2, 0.1)
 
         self.encoder = Transformer_Utils.Encoder(Transformer_Utils.EncoderLayer(self.hidden_dim, c(attn), c(ffw), 0.1), 2)
         self.decoder = Transformer_Utils.Decoder(Transformer_Utils.DecoderLayer(self.hidden_dim, c(attn), c(attn), c(ffw), 0.1), 2)
 
+        self.Drop = nn.Dropout(0.1)
 
     def forward(self, x_word, x_index, tree):
         final_state = self.compute_tree_states(x_word, x_index, tree)
@@ -511,7 +513,7 @@ class TransformerEncoderPoolV1(nn.Module): #twitter16(75.79%) ['acc:', 0.7579, '
         node_h = init_node_h
         for idx, (words, indexs, thislayer) in enumerate(zip(x_word[num_leaves:], x_index[num_leaves:], tree)):
             node_h, parent_h = _recurrence(words, indexs, thislayer, idx, node_h)
-        return node_h.max(dim=0)[0]
+        return node_h[num_leaves:].max(dim=0)[0]
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
