@@ -180,13 +180,14 @@ tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, 
 # sys.exit(0)
 ## 2. ini RNN model
 t0 = time.time()
-model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU 改用maxpooling之后，twitter16上的最好效果达到78.57%
+# model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU 改用maxpooling之后，twitter16上的最好效果达到78.57%
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU,最好效果７２左右
 # model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU,最好效果在59左右
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
 # model = BU_Transformer.TreeLSTM(vocabulary_size, hidden_dim, Nclass)  #TreeLSTM
 # model = BU_Transformer.TransformerEncoder(vocabulary_size, hidden_dim, Nclass)
 # model = BU_Transformer.TransformerEncoderPoolV2(vocabulary_size, hidden_dim, Nclass)
+model = BU_Transformer.StarTransformer(vocabulary_size, hidden_dim, Nclass)
 for p in model.parameters():
     if p.dim() > 1:
         nn.init.xavier_uniform(p)
