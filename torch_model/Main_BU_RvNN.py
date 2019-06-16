@@ -187,7 +187,7 @@ t0 = time.time()
 # model = BU_Transformer.TreeLSTM(vocabulary_size, hidden_dim, Nclass)  #TreeLSTM
 # model = BU_Transformer.TransformerEncoder(vocabulary_size, hidden_dim, Nclass)
 # model = BU_Transformer.TransformerEncoderPoolV2(vocabulary_size, hidden_dim, Nclass)
-model = BU_Transformer.TransformerEncoderPoolV1(vocabulary_size, hidden_dim, Nclass)
+model = BU_Transformer.StarTransformer(vocabulary_size, hidden_dim, Nclass)
 for p in model.parameters():
     if p.dim() > 1:
         nn.init.xavier_uniform(p)
@@ -238,7 +238,7 @@ for epoch in range(Nepoch):
        if best_test_acc < res[1]:
            best_test_acc = res[1]
            print("best_performance:")
-           torch.save(model, "../resource/TransformerPoolV12_%.3f.pkl"%best_test_acc)
+           torch.save(model, "../resource/StarTransformer_%.3f.pkl"%best_test_acc)
        print('results:', res)
        sys.stdout.flush()
        ## Adjust the learning rate if loss increases

@@ -71,7 +71,7 @@ class SublayerConnection(nn.Module):
     def forward(self, x, sublayer):
         "Apply residual connection to any sublayer with the same size."
         return x + self.dropout(sublayer(self.norm(x)))
-        # return x+sublayer(self.norm(x))
+
 class EncoderLayer(nn.Module):
     "Encoder is made up of self-attn and feed forward (defined below)"
     def __init__(self, size, self_attn, feed_forward, dropout):
@@ -170,3 +170,42 @@ class StarTransformer(nn.Module):
         super(StarTransformer, self).__init__()
         self.attn = attn
         self.norm = norm
+
+    def forward(self, inputs, t_rounds):
+        # print("inputs:", inputs.shape)
+        s_t = inputs.mean(dim=0).unsqueeze(0)
+
+        d_model = inputs.size(1)
+        inputs = torch.cat((torch.zeros(1, d_model), inputs, torch.zeros(1, d_model)), dim=0)
+        H_t = inputs
+
+        def get_ring(cur, max_num):
+            return (cur-1 if cur-1>-1 else cur-1+max_num, cur, cur+1 if cur+1<max_num else cur+1-max_num)
+
+        def update_ring(idx, oldH, s):
+            (idx0, idx1, idx2) = get_ring(idx, oldH.size(0))
+            C = torch.cat(
+                (oldH[idx0], oldH[idx1], oldH[idx2], inputs[idx1], s[0])
+            ).view(5, -1)
+            # print("C_shape", C.shape)
+            return self.norm(
+                F.relu(
+                    self.attn(s, C, C)
+                )
+            )
+
+        for t in range(0, t_rounds, 1):
+            H_t = torch.cat(
+                list(
+                    map( lambda idx: update_ring(idx, H_t, s_t), range(  H_t.size(0) ))
+                ),
+                dim=0
+            )
+            # print("H_t", H_t)
+            s_t = self.attn(s_t, torch.cat((s_t, H_t), dim=0), torch.cat((s_t, H_t), dim=0))
+            # print("s_t:", s_t)
+            s_t = self.norm(F.relu(s_t))
+
+        return s_t
+
+
