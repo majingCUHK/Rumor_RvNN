@@ -177,7 +177,6 @@ tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, 
 #                     )
 #                 )
 # print("tree_train:", max_degree)
-# sys.exit(0)
 ## 2. ini RNN model
 t0 = time.time()
 # model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU 改用maxpooling之后，twitter16上的最好效果达到78.57%
@@ -191,10 +190,11 @@ model = BU_Transformer.StarTransformer(vocabulary_size, hidden_dim, Nclass)
 for p in model.parameters():
     if p.dim() > 1:
         nn.init.xavier_uniform(p)
-
+best_model = torch.load("../resource/GRU_0.816.pkl")
+model.E_bu = best_model.E_bu
+del best_model
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
-
 ## 3. looping SGD
 
 paras = [{'param':parameter, 'lr':0.1, 'weight_decay':0.001} if not 'E_bu' in name else {'param':parameter, 'lr':0.05} for name, parameter in model.named_parameters()]
