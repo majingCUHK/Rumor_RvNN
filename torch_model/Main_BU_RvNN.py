@@ -180,19 +180,20 @@ tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, 
 ## 2. ini RNN model
 t0 = time.time()
 # model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU 改用maxpooling之后，twitter16上的最好效果达到78.57%
-# model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU,最好效果７２左右
+model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU,最好效果７２左右
 # model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU,最好效果在59左右
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
 # model = BU_Transformer.TreeLSTM(vocabulary_size, hidden_dim, Nclass)  #TreeLSTM
 # model = BU_Transformer.TransformerEncoder(vocabulary_size, hidden_dim, Nclass)
 # model = BU_Transformer.TransformerEncoderPoolV2(vocabulary_size, hidden_dim, Nclass)
-model = BU_Transformer.StarTransformer(vocabulary_size, hidden_dim, Nclass)
+# model = BU_Transformer.StarTransformer(vocabulary_size, hidden_dim, Nclass)
+# model = BU_RvNN.PoolingRvNN(vocabulary_size, hidden_dim, Nclass)
 for p in model.parameters():
     if p.dim() > 1:
         nn.init.xavier_uniform(p)
-best_model = torch.load("../resource/GRU_0.816.pkl")
-model.E_bu = best_model.E_bu
-del best_model
+# best_model = torch.load("../resource/GRU_0.816.pkl")
+# model.E_bu = best_model.E_bu
+# del best_model
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 ## 3. looping SGD
@@ -238,7 +239,7 @@ for epoch in range(Nepoch):
        if best_test_acc < res[1]:
            best_test_acc = res[1]
            print("best_performance:")
-           torch.save(model, "../resource/GRU_%.3f.pkl"%best_test_acc)
+           torch.save(model, "../resource/PoolingGRU_%.3f.pkl"%best_test_acc)
        print('results:', res)
        sys.stdout.flush()
        ## Adjust the learning rate if loss increases

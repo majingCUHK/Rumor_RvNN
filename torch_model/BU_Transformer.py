@@ -146,60 +146,64 @@ class AttentionGRU(nn.Module):
         self.E_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.word_dim]), requires_grad=True)
         self.W_z_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
         self.U_z_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.b_z_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
+        self.b_z_bu = nn.parameter.Parameter(self.init_vector([1, self.hidden_dim]), requires_grad=True)
         self.W_r_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
         self.U_r_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.b_r_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
+        self.b_r_bu = nn.parameter.Parameter(self.init_vector([1, self.hidden_dim]), requires_grad=True)
         self.W_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
         self.U_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.b_h_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
+        self.b_h_bu = nn.parameter.Parameter(self.init_vector([1, self.hidden_dim]), requires_grad=True)
         self.W_out_bu = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
-        self.b_out_bu = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
+        self.b_out_bu = nn.parameter.Parameter(self.init_vector([1, self.Nclass]), requires_grad=True)
 
         self.WQ = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
         self.WK = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
         self.WV = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
+        self.norm = nn.LayerNorm([1,self.hidden_dim])
+        self.drop = nn.Dropout(0.1)
 
-    def forward(self, x_word, x_index, tree, y):
+    def forward(self, x_word, x_index, tree):
         final_state = self.compute_tree_states(x_word, x_index, tree)
-        pred, loss = self.predAndLoss(final_state, y)
-        return loss
+        return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
 
     def recursive_unit(self, parent_xe, child_h, child_xe):
         #attention
-        if child_xe.dim() == 1:
-            h_tilde = child_h
+        print("sizes:", parent_xe.size(), child_h.size(), child_xe.size())
+        if child_xe.size(0) == 1:
+            h_tilde = child_h.mm(self.WV)
         else:
-            query = parent_xe.mul(self.WQ).sum(dim=1)
-            key = child_xe.mm(self.WK)
-            # val = child_h.mm(self.WV)
-            attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mul(key).sum(dim=1) )
-            h_tilde = attention.mul(child_h.t()).sum(dim=1)
+            query = parent_xe.mm(self.WQ)
+            key = child_h.mm(self.WK)
+            val = child_h.mm(self.WV)
+            attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mm(key.t()))
+            h_tilde = attention.mm(val)
         #gru
-        z_bu = F.sigmoid(self.W_z_bu.mul(parent_xe).sum(dim=1) + self.U_z_bu.mul(h_tilde).sum(dim=1) + self.b_z_bu)
-        r_bu = F.sigmoid(self.W_r_bu.mul(parent_xe).sum(dim=1) + self.U_r_bu.mul(h_tilde).sum(dim=1) + self.b_r_bu)
-        c = F.tanh(self.W_h_bu.mul(parent_xe).sum(dim=1) + self.U_h_bu.mul(h_tilde * r_bu).sum(dim=1) + self.b_h_bu)
-        h_bu = z_bu * h_tilde + (1 - z_bu) * c
+        print("h_size:", h_tilde.size())
+        self.norm(h_tilde)
+        z_bu = F.sigmoid(parent_xe.mm(self.W_z_bu.t()) + h_tilde.mm(self.U_z_bu.t()) + self.b_z_bu)
+        r_bu = F.sigmoid(parent_xe.mm(self.W_r_bu.t()) + h_tilde.mm(self.U_r_bu.t()) + self.b_r_bu)
+        c = F.tanh(parent_xe.mm(self.W_h_bu.t()) + (r_bu*h_tilde).mm(self.U_h_bu.t()) + self.b_h_bu)
+        h_bu = z_bu * h_tilde + (1 - z_bu) * self.drop(c)
+        print("h_bu size:", h_bu.size())
         return h_bu
 
     def Word2Vec(self, word, index):
-        vec = self.E_bu[:, index].mul(torch.tensor(word)).sum(dim=1)
+        vec = torch.tensor([word]).mm(self.E_bu[:, index].t())
         return vec
 
     def Words2Vecs(self, words, indexs):
-        words = torch.tensor(words)
         tmp = torch.tensor([])
-        for i in range(words.size()[0]):
+        for i in range(len(words)):
             tmp = torch.cat((tmp, self.Word2Vec(words[i], indexs[i])), dim=0)
-        vec = tmp.view(words.size()[0], -1)
-        return vec
+        print("---------Vecs size:", tmp.size())
+        return tmp
 
     def compute_tree_states(self, x_word, x_index, tree):
         num_parents = tree.shape[0]
         num_nodes = x_word.shape[0]
         num_leaves = num_nodes -num_parents
         leaf_h = list(map(
-                            lambda x_idxs: self.recursive_unit( self.Word2Vec(x_idxs[0], x_idxs[1]), torch.zeros([self.degree, self.hidden_dim]), torch.zeros([self.degree, self.hidden_dim])).tolist(),
+                            lambda x_idxs: self.recursive_unit( self.Word2Vec(x_idxs[0], x_idxs[1]), torch.zeros([self.degree, self.hidden_dim]), torch.zeros([self.degree, self.hidden_dim])).tolist()[0],
                                 zip(x_word[:num_leaves], x_index[:num_leaves])
                         )
                     )
@@ -210,7 +214,10 @@ class AttentionGRU(nn.Module):
             child_exists = (tree[:-1] > -1).nonzero()
             if len(tree[child_exists]) == 1:
                 child_xes = self.Word2Vec(x_word[ tree[child_exists][0] ], indexs[ tree[child_exists][0] ])
-                child_h = node_h[tree[child_exists][0]]
+                child_h = node_h[tree[child_exists][0]].unsqueeze(0)
+                print("************debug0:", node_h.size(), child_h.size(), tree[child_exists])
+                # child_h = node_h[tree[child_exists][0]].unsqueeze(0)
+                # print("************debug1:", child_h.size())
             else:
                 child_xes = self.Words2Vecs(x_word[ tree[child_exists] ], indexs[ tree[child_exists] ])
                 child_h = node_h[tree[child_exists]]
@@ -220,12 +227,9 @@ class AttentionGRU(nn.Module):
             return node_h, parent_h
 
         node_h = init_node_h
-        root_state = []
         for idx, thislayer in enumerate(tree):
             node_h, parent_h = _recurrence(x_word, x_index, thislayer, idx, node_h)
-            if idx == num_parents-1:
-                root_state = parent_h
-        return root_state
+        return node_h[num_leaves:].max(dim=0)[0]
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)

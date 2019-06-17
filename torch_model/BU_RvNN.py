@@ -203,3 +203,99 @@ class RvNN(nn.Module): # 改成pooling之后，twitter16 ['acc:', 0.7857, 'Favg:
     def predict_up(self, x_word, x_index, x_tree):
         final_state = self.compute_tree_states(x_word, x_index, x_tree)
         return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
+
+
+
+class PoolingRvNN(nn.Module): # 改成pooling之后，twitter16 ['acc:', 0.7857, 'Favg:', 0.77495, 0.5899, 0.2878, 'C1:', 0.8673, 0.8333, 0.6, 0.6977, 'C2:', 0.8776, 0.8, 0.8889, 0.8421, 'C3:', 0.9388, 0.8, 0.8889, 0.8421, 'C4:', 0.8878, 0.7, 0.7368, 0.7179]
+    def __init__(self, word_dim, hidden_dim=5, Nclass=4,
+                 degree=2, momentum=0.9,
+                 trainable_embeddings=True,
+                 labels_on_nonroot_nodes=False,
+                 irregular_tree=True):
+        super(PoolingRvNN, self).__init__()
+        assert word_dim > 1 and hidden_dim > 1
+        self.word_dim = word_dim
+        self.hidden_dim = hidden_dim
+        self.Nclass = Nclass
+        self.degree = degree  # 这里比较奇怪的是，在创建模型的时候是没有对degree进行赋值的
+        self.momentum = momentum
+        self.irregular_tree = irregular_tree
+
+        self.E_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.word_dim]), requires_grad=True)
+        self.W_z_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
+        self.U_z_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
+        self.b_z_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
+        self.W_r_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
+        self.U_r_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
+        self.b_r_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
+        self.W_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
+        self.U_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
+        self.b_h_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
+        self.W_out_bu = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
+        self.b_out_bu = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
+        self.Drop = nn.Dropout(0.1)
+    def forward(self, x_word, x_index, tree):
+        final_state = self.compute_tree_states(x_word, x_index, tree)
+        return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
+
+    def recursive_unit(self, parent_word, parent_index, child_h):
+        parent_xe = self.E_bu[:, parent_index].mul(torch.tensor(parent_word)).sum(dim=1)
+        def pc_pairs(h_tilde):
+            z_bu = F.sigmoid(self.W_z_bu.mul(parent_xe).sum(dim=1) + self.U_z_bu.mul(h_tilde).sum(dim=1) + self.b_z_bu)
+            r_bu = F.sigmoid(self.W_r_bu.mul(parent_xe).sum(dim=1) + self.U_r_bu.mul(h_tilde).sum(dim=1) + self.b_r_bu)
+            c = F.tanh(self.W_h_bu.mul(parent_xe).sum(dim=1) + self.U_h_bu.mul(h_tilde * r_bu).sum(dim=1) + self.b_h_bu)
+            h_bu = z_bu * h_tilde + (1 - z_bu) * self.Drop(c)
+            return h_bu
+        if child_h.size(0) == 1:
+            h = pc_pairs(child_h[0]).unsqueeze(0)
+        else:
+            h = torch.tensor(
+                list(
+                    map(lambda x: pc_pairs(x).tolist(), child_h)
+                )
+            )
+        return h.mean(dim=0)[0]
+
+
+    def compute_tree_states(self, x_word, x_index, tree):
+        num_parents = tree.shape[0]
+        num_nodes = x_word.shape[0]
+        num_leaves = num_nodes -num_parents
+        leaf_h = list(map(
+                            lambda x_idxs: self.recursive_unit(x_idxs[0], x_idxs[1], torch.zeros([self.degree, self.hidden_dim])).tolist(),
+                                zip(x_word[:num_leaves], x_index[:num_leaves])
+                        )
+                    )
+
+        init_node_h = torch.tensor(leaf_h)
+
+        def _recurrence(x_word, x_index, tree, idx, node_h):
+            child_exists = (tree[:-1] > -1).nonzero()
+            child_h = node_h[ tree[child_exists] ]
+            parent_h = self.recursive_unit(x_word, x_index, child_h)
+            node_h = torch.cat((node_h, parent_h.view(1, -1)), 0)
+            return node_h, parent_h
+
+        node_h = init_node_h
+        root_state = []
+        for idx, (words, indexs, thislayer) in enumerate(zip(x_word[num_leaves:], x_index[num_leaves:], tree)):
+            node_h, parent_h = _recurrence(words, indexs, thislayer, idx, node_h)
+            # if idx == num_parents-1:
+            #     root_state = parent_h
+        # return root_state
+        return node_h.max(dim=0)[0]
+
+    def predAndLoss(self, final_state, ylabel):
+        pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
+        loss = (torch.tensor(ylabel, dtype=torch.float)-pred).pow(2).sum()
+        return pred, loss
+
+    def init_vector(self, shape):
+        return torch.zeros(shape)
+
+    def init_matrix(self, shape):
+        return torch.from_numpy(np.random.normal(scale=0.1, size=shape).astype('float32'))
+
+    def predict_up(self, x_word, x_index, x_tree):
+        final_state = self.compute_tree_states(x_word, x_index, x_tree)
+        return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
