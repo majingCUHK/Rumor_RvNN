@@ -168,7 +168,6 @@ class AttentionGRU(nn.Module):
 
     def recursive_unit(self, parent_xe, child_h, child_xe):
         #attention
-        print("sizes:", parent_xe.size(), child_h.size(), child_xe.size())
         if child_xe.size(0) == 1:
             h_tilde = child_h.mm(self.WV)
         else:
@@ -178,13 +177,11 @@ class AttentionGRU(nn.Module):
             attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mm(key.t()))
             h_tilde = attention.mm(val)
         #gru
-        print("h_size:", h_tilde.size())
         self.norm(h_tilde)
         z_bu = F.sigmoid(parent_xe.mm(self.W_z_bu.t()) + h_tilde.mm(self.U_z_bu.t()) + self.b_z_bu)
         r_bu = F.sigmoid(parent_xe.mm(self.W_r_bu.t()) + h_tilde.mm(self.U_r_bu.t()) + self.b_r_bu)
         c = F.tanh(parent_xe.mm(self.W_h_bu.t()) + (r_bu*h_tilde).mm(self.U_h_bu.t()) + self.b_h_bu)
         h_bu = z_bu * h_tilde + (1 - z_bu) * self.drop(c)
-        print("h_bu size:", h_bu.size())
         return h_bu
 
     def Word2Vec(self, word, index):
@@ -195,7 +192,6 @@ class AttentionGRU(nn.Module):
         tmp = torch.tensor([])
         for i in range(len(words)):
             tmp = torch.cat((tmp, self.Word2Vec(words[i], indexs[i])), dim=0)
-        print("---------Vecs size:", tmp.size())
         return tmp
 
     def compute_tree_states(self, x_word, x_index, tree):
@@ -215,7 +211,6 @@ class AttentionGRU(nn.Module):
             if len(tree[child_exists]) == 1:
                 child_xes = self.Word2Vec(x_word[ tree[child_exists][0] ], indexs[ tree[child_exists][0] ])
                 child_h = node_h[tree[child_exists][0]].unsqueeze(0)
-                print("************debug0:", node_h.size(), child_h.size(), tree[child_exists])
                 # child_h = node_h[tree[child_exists][0]].unsqueeze(0)
                 # print("************debug1:", child_h.size())
             else:
