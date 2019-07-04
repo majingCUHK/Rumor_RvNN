@@ -53,7 +53,7 @@ class RvNN(nn.Module):
         self.b_out4 = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
 
     def forward(self, td_x_word, td_x_index, td_tree):
-        td_final_state = self.td_compute_tree_states(td_x_word, td_x_index, td_tree, td_leaf_idxs)
+        td_final_state = self.td_compute_tree_states(td_x_word, td_x_index, td_tree)
         bu_final_state = self.bu_compute_tree_states(td_x_word, td_x_index, td_tree)
         final_state = torch.cat((td_final_state, bu_final_state), dim=0)
         final_state1 = F.relu(self.W_out1.mul(final_state).sum(dim=1) +self.b_out1)

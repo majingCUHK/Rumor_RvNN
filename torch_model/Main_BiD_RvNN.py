@@ -9,8 +9,8 @@
 """
 
 import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
+# reload(sys)
+# sys.setdefaultencoding('utf-8')
 
 import BiD_RvNN
 import math
@@ -26,6 +26,7 @@ import random
 import torch.optim as optim
 import datetime
 from evaluate import *
+import dgl
 
 obj = "Twitter15" # choose dataset, you can choose either "Twitter15" or "Twitter16"
 fold = "3" # fold index, choose from 0-4
@@ -58,6 +59,10 @@ print("first TD indexs:", TD_index_train[0])
 TD_tree_train = [tree_loader.Tree(l) for l in TD_tree_train]
 TD_tree_test = [tree_loader.Tree(l) for l in TD_tree_test]
 
+g_tst = dgl.DGLGraph(TD_tree_train[0].tree)
+print(g_tst)
+sys.exit(0)
+
 def CompLoss(pred, ylabel):
     return (torch.tensor(ylabel, dtype=torch.float) - pred).pow(2).sum()
 
@@ -65,7 +70,7 @@ def CompLoss(pred, ylabel):
 t0 = time.time()
 model = BiD_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass)
 t1 = time.time()
-print 'Recursive model established,', (t1-t0)/60
+print('Recursive model established,', (t1-t0)/60)
 
 ## 3. looping SGD
 paras = [{'param':parameter, 'lr':0.1, 'weight_decay':0.001} if not 'E_bu' in name else {'param':parameter, 'lr':0.05} for name, parameter in model.named_parameters()]

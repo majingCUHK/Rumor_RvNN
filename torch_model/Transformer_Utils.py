@@ -4,25 +4,28 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math, copy, time
+import pysnooper
 from torch.autograd import Variable
 
 
 def clones(module, N):
     "Produce N identical layers."
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
-
+@pysnooper.snoop('./attention.log')
 def attention(query, key, value, mask=None, dropout=None):
     "Compute 'Scaled Dot Product Attention'"
-    # query = [head, nbatch, d_k] , key = [head, nbatch, d_k], scores = [head, nbatch, n_batch], x= [head, nbatch, nbatch][head, nbatch, d_k]
+    assert query.dim() == 4 and key.dim()==4 and value.dim()==4  # x = [nbatch, head, kpairs, nbatch]
     d_k = query.size(-1) #the dim of the query
-    head = query.size(1)
+    # [nbatch, head, kpairs_q, d_k] [nbatch, head, d_k, kpairs_k] -> [nbatch, head, kpairs_q, kpairs_k]
     scores = torch.matmul(query, key.transpose(-2, -1)) \
              / math.sqrt(d_k)
+
     if mask is not None:
         scores = scores.masked_fill(mask == 0, -1e9)
     p_attn = F.softmax(scores, dim=-1)
     # if dropout is not None: # drop out the attention is confusing
     #     p_attn = dropout(p_attn)
+    #attn dot val = [nbatch, head, kpairs_q, kpairs_k] [nbatch, head, kpairs_v, d_k] = [nbatch, head, kpairs_q, d_k]
     return torch.matmul(p_attn, value), p_attn
 
 def subsequent_mask(size):
@@ -33,7 +36,6 @@ def subsequent_mask(size):
 
 class Encoder(nn.Module):
     "Core encoder is a stack of N layers"
-
     def __init__(self, layer, N):
         super(Encoder, self).__init__()
         self.layers = clones(layer, N)
@@ -53,6 +55,7 @@ class LayerNorm(nn.Module):
         self.b_2 = nn.Parameter(torch.zeros(features))
         self.eps = eps
 
+    @pysnooper.snoop('./layernorm.log')
     def forward(self, x):
         mean = x.mean(-1, keepdim=True)
         std = x.std(-1, keepdim=True)
@@ -109,27 +112,24 @@ class MultiHeadedAttention(nn.Module):
         self.linears = clones(nn.Linear(d_model, d_model), 4)
         self.attn = None
         self.dropout = nn.Dropout(p=dropout)
-
     def forward(self, query, key, value, mask=None):
-        "Implements Figure 2"
-
+        assert query.dim()==3 and key.dim()==3 and value.dim()==3
         if mask is not None:
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
-        # nbatches = query.size(0)
-
         # 1) Do all the linear projections in batch from d_model => h x d_k
         query, key, value = \
-            [l(x).view(x.size(0), self.h, self.d_k).transpose(0, 1)
-             for l, x in zip(self.linears, (query, key, value))]  # q=[nbatch, d_model], qW=[nbatch, d_model]-> [nbatch, head, d_k] -> [head, batch, d_k
+            [l(x.view(-1, x.size(-1))).view(x.size(0),x.size(1), self.h, self.d_k).transpose(1, 2)
+             for l, x in zip(self.linears, (query, key, value))]  # q=[nbatch, kpairs, d_model]-> [nbatch*kpairs, d_model], qW=[nbatch*kpairs, d_model]-> [nbatch, kpairs, head, d_k] ->[nbatch, head, kpairs, d_k]
         # 2) Apply attention on all the projected vectors in batch.
         x, self.attn = attention(query, key, value, mask=mask,
                                  dropout=self.dropout)
         # 3) "Concat" using a view and apply a final linear.
-        # x = [head, nbatch, d_k] -> [nbatch, head, d_k] -> [nbatch, head*d_k]
-        x = x.transpose(0, 1).contiguous() \
-            .view(x.size(1), self.h * self.d_k)
-        return self.linears[-1](x)
+        # x = [nbatch, head, kpairs, d_k] -> [nbatch, kpairs, head, d_k] -> [nbatch, kpairs, head*d_k]
+        print("attn x size:", x.size())
+        x = x.transpose(1, 2).contiguous() \
+            .view(x.size(0), x.size(2), self.h * self.d_k)
+        return self.linears[-1](x.view(-1, x.size(-1))).view(x.size(0), x.size(1), self.h*self.d_k)
 
 
 class DecoderLayer(nn.Module):
@@ -207,5 +207,3 @@ class StarTransformer(nn.Module):
             s_t = self.norm(F.relu(s_t))
 
         return s_t
-
-
