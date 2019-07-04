@@ -274,7 +274,6 @@ class TransformerCell(nn.Module):
 
     @pysnooper.snoop('./debug.log')
     def reduce_func(self, nodes):
-        print("h_cat:", *nodes.mailbox['h'].size())
         h_cat = nodes.mailbox['h']
         return {'c': h_cat}
 
