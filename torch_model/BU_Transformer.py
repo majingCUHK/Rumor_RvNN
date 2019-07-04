@@ -154,11 +154,12 @@ class AttentionGRU(nn.Module):
         self.U_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
         self.b_h_bu = nn.parameter.Parameter(self.init_vector([1, self.hidden_dim]), requires_grad=True)
         self.W_out_bu = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
-        self.b_out_bu = nn.parameter.Parameter(self.init_vector([1, self.Nclass]), requires_grad=True)
+        self.b_out_bu = nn.parameter.Parameter(self.init_vector(self.Nclass), requires_grad=True)
 
-        self.WQ = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
-        self.WK = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
-        self.WV = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
+        # self.WQ = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
+        # self.WK = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
+        # self.WV = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
+        self.W_attn = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]))
         self.norm = nn.LayerNorm([1,self.hidden_dim])
         self.drop = nn.Dropout(0.1)
 
@@ -167,15 +168,18 @@ class AttentionGRU(nn.Module):
         return F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
 
     def recursive_unit(self, parent_xe, child_h, child_xe):
+        # #self attention
+        # if child_xe.size(0) == 1:
+        #     h_tilde = child_h.mm(self.WV)
+        # else:
+        #     query = parent_xe.mm(self.WQ)
+        #     key = child_h.mm(self.WK)
+        #     val = child_h.mm(self.WV)
+        #     attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mm(key.t()))
+        #     h_tilde = attention.mm(val)
         #attention
-        if child_xe.size(0) == 1:
-            h_tilde = child_h.mm(self.WV)
-        else:
-            query = parent_xe.mm(self.WQ)
-            key = child_h.mm(self.WK)
-            val = child_h.mm(self.WV)
-            attention = F.softmax( (query/np.sqrt(self.hidden_dim*1.0)).mm(key.t()))
-            h_tilde = attention.mm(val)
+        attn = F.softmax(F.sigmoid(parent_xe.mm(self.W_attn.mm(child_h.t()))))
+        h_tilde = attn.mm(child_h)
         #gru
         self.norm(h_tilde)
         z_bu = F.sigmoid(parent_xe.mm(self.W_z_bu.t()) + h_tilde.mm(self.U_z_bu.t()) + self.b_z_bu)

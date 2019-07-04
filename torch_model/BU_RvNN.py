@@ -187,7 +187,7 @@ class RvNN(nn.Module): # 改成pooling之后，twitter16 ['acc:', 0.7857, 'Favg:
             # if idx == num_parents-1:
             #     root_state = parent_h
         # return root_state
-        return node_h.max(dim=0)[0]
+        return node_h.mean(dim=0)[0]
 
     def predAndLoss(self, final_state, ylabel):
         pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
@@ -254,7 +254,7 @@ class PoolingRvNN(nn.Module): # 改成pooling之后，twitter16 ['acc:', 0.7857,
                     map(lambda x: pc_pairs(x).tolist(), child_h)
                 )
             )
-        return h.mean(dim=0)[0]
+        return h.max(dim=0)[0]
 
 
     def compute_tree_states(self, x_word, x_index, tree):

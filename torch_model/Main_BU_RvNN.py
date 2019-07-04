@@ -30,7 +30,7 @@ tag = ""
 vocabulary_size = 5000
 hidden_dim = 64
 Nclass = 4
-Nepoch = 500
+Nepoch = 150
 lr = 0.005
 
 unit="BU_RvNN-"+obj+str(fold)+'-vol.'+str(vocabulary_size)+tag
@@ -179,7 +179,7 @@ tree_train, word_train, index_train, y_train, tree_test, word_test, index_test, 
 # print("tree_train:", max_degree)
 ## 2. ini RNN model
 t0 = time.time()
-# model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU 改用maxpooling之后，twitter16上的最好效果达到78.57%
+# model = BU_RvNN.RvNN(vocabulary_size, hidden_dim, Nclass) #GRU 改用maxpooling之后，twitter16上的最好效果达到81.6%
 model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #AttentionGRU,最好效果７２左右
 # model = BU_Transformer.MultiAttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionGRU,最好效果在59左右
 # model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #MultiHeadAttentionFCN
@@ -191,7 +191,7 @@ model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #Atten
 for p in model.parameters():
     if p.dim() > 1:
         nn.init.xavier_uniform(p)
-# best_model = torch.load("../resource/GRU_0.816.pkl")
+# model = torch.load("../resource/AttnGRU_0.796.pkl")
 # model.E_bu = best_model.E_bu
 # del best_model
 t1 = time.time()
@@ -239,7 +239,7 @@ for epoch in range(Nepoch):
        if best_test_acc < res[1]:
            best_test_acc = res[1]
            print("best_performance:")
-           torch.save(model, "../resource/PoolingGRU_%.3f.pkl"%best_test_acc)
+           torch.save(model, "../resource/AttnGRU_T_%.3f.pkl"%best_test_acc)
        print('results:', res)
        sys.stdout.flush()
        ## Adjust the learning rate if loss increases
