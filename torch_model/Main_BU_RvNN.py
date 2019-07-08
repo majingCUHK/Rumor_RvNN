@@ -186,14 +186,13 @@ model = BU_Transformer.AttentionGRU(vocabulary_size, hidden_dim, Nclass)  #Atten
 # model = BU_Transformer.TreeLSTM(vocabulary_size, hidden_dim, Nclass)  #TreeLSTM
 # model = BU_Transformer.TransformerEncoder(vocabulary_size, hidden_dim, Nclass)
 # model = BU_Transformer.TransformerEncoderPoolV2(vocabulary_size, hidden_dim, Nclass)
-# model = BU_Transformer.StarTransformer(vocabulary_size, hidden_dim, Nclass)
-# model = BU_RvNN.PoolingRvNN(vocabulary_size, hidden_dim, Nclass)
+model = BU_Transformer.StarTransformer(vocabulary_size, hidden_dim, Nclass)
 for p in model.parameters():
     if p.dim() > 1:
         nn.init.xavier_uniform(p)
-# model = torch.load("../resource/AttnGRU_0.796.pkl")
-# model.E_bu = best_model.E_bu
-# del best_model
+best_model = torch.load("../resource/GRU_0.816.pkl")
+model.E_bu = best_model.E_bu
+del best_model
 t1 = time.time()
 print('Recursive model established,', (t1-t0)/60)
 ## 3. looping SGD

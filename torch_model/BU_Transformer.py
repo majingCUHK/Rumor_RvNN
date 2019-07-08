@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import Transformer_Utils
-
+import math
 import copy
 
 class Node_tweet(object):
@@ -475,24 +475,23 @@ class StarTransformer(nn.Module): # performance: twitter15 (73.81%) twitter16(74
         self.multi_head = multi_head
 
         self.E_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.word_dim]), requires_grad=True)
-        self.W_z_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.U_z_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.b_z_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
-        self.W_r_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.U_r_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.b_r_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
-        self.W_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.U_h_bu = nn.parameter.Parameter(self.init_matrix([self.hidden_dim, self.hidden_dim]), requires_grad=True)
-        self.b_h_bu = nn.parameter.Parameter(self.init_vector([self.hidden_dim]), requires_grad=True)
         self.W_out_bu = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
         self.b_out_bu = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
         self.Drop = nn.Dropout(0.1)
 
-        attn = Transformer_Utils.MultiHeadedAttention(self.multi_head, self.hidden_dim)
-        norm = Transformer_Utils.LayerNorm(self.hidden_dim)
-        self.transformer = Transformer_Utils.StarTransformer(attn, norm)
-
-
+    def attention(self, query, key, value, mask=None, dropout=None):
+        "Compute 'Scaled Dot Product Attention'"
+        # query = [head, nbatch, d_k] , key = [head, nbatch, d_k], scores = [head, nbatch, n_batch], x= [head, nbatch, nbatch][head, nbatch, d_k]
+        d_k = query.size(-1)  # the dim of the query
+        head = query.size(1)
+        scores = torch.matmul(query, key.transpose(-2, -1)) \
+                 / math.sqrt(d_k)
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+        p_attn = F.softmax(scores, dim=-1)
+        # if dropout is not None: # drop out the attention is confusing
+        #     p_attn = dropout(p_attn)
+        return torch.matmul(p_attn, value), p_attn
 
     def forward(self, x_word, x_index, tree):
         final_state = self.compute_tree_states(x_word, x_index, tree)
@@ -526,11 +525,6 @@ class StarTransformer(nn.Module): # performance: twitter15 (73.81%) twitter16(74
         for idx, (words, indexs, thislayer) in enumerate(zip(x_word[num_leaves:], x_index[num_leaves:], tree)):
             node_h, parent_h = _recurrence(words, indexs, thislayer, idx, node_h)
         return node_h[num_leaves:].max(dim=0)[0]
-
-    def predAndLoss(self, final_state, ylabel):
-        pred = F.softmax(self.W_out_bu.mul(final_state).sum(dim=1) +self.b_out_bu)
-        loss = (torch.tensor(ylabel, dtype=torch.float)-pred).pow(2).sum()
-        return pred, loss
 
     def init_vector(self, shape):
         return torch.zeros(shape)

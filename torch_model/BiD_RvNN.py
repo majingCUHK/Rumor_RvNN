@@ -52,15 +52,15 @@ class RvNN(nn.Module):
         self.W_out4 = nn.parameter.Parameter(self.init_matrix([self.Nclass, self.hidden_dim]), requires_grad=True)
         self.b_out4 = nn.parameter.Parameter(self.init_vector([self.Nclass]), requires_grad=True)
 
-    def forward(self, td_x_word, td_x_index, td_tree, td_leaf_idxs, bu_x_word, bu_x_index, bu_tree, y):
-        td_final_state = self.td_compute_tree_states(td_x_word, td_x_index, td_tree, td_leaf_idxs)
-        bu_final_state = self.bu_compute_tree_states(bu_x_word, bu_x_index, bu_tree)
+    def forward(self, td_x_word, td_x_index, td_tree):
+        td_final_state = self.td_compute_tree_states(td_x_word, td_x_index, td_tree)
+        bu_final_state = self.bu_compute_tree_states(td_x_word, td_x_index, td_tree)
         final_state = torch.cat((td_final_state, bu_final_state), dim=0)
         final_state1 = F.relu(self.W_out1.mul(final_state).sum(dim=1) +self.b_out1)
         # final_state2 = self.W_out2.mul(final_state1).sum(dim=1) + self.b_out2
         # final_state3 = self.W_out3.mul(final_state2).sum(dim=1) + self.b_out3
-        pred, loss = self.predAndLoss(final_state1, y)
-        return pred, loss
+        pred = F.softmax(self.W_out4.mul(final_state1).sum(dim=1) +self.b_out4)
+        return pred
 
     def td_recursive_unit(self, child_word, child_index, parent_h):
         child_xe = self.E_td[:, child_index].mul(torch.tensor(child_word)).sum(dim=1)
@@ -120,11 +120,6 @@ class RvNN(nn.Module):
             if idx == num_parents-1:
                 root_state = parent_h
         return root_state
-
-    def predAndLoss(self, final_state, ylabel):
-        pred = F.softmax(self.W_out4.mul(final_state).sum(dim=1) +self.b_out4)
-        loss = (torch.tensor(ylabel, dtype=torch.float)-pred).pow(2).sum()
-        return pred, loss
 
     def init_vector(self, shape):
         return torch.zeros(shape)
