@@ -256,8 +256,10 @@ class GraphTransformer(nn.Module):
         g = dgl.batch([InitS(gg) for gg in dgl.unbatch(g)])
         # propagate
         for i in range(self.T_step):
-            g.update_all(self.cell.message_func, self.cell.reduce_func)
-            g.apply_nodes(func=self.cell.apply_node_func)
+            g.register_message_func(self.cell.message_func)
+            g.register_reduce_func(self.cell.reduce_func)
+            g.register_apply_node_func(self.cell.apply_node_func)
+            dgl.prop_nodes_topo(g)
             States = self.cell.updateGlobalVec(extractS(g), extractH(g) )
             g = dgl.batch([updateS(tree, state) for (tree, state) in zip(dgl.unbatch(g), States)])
         # compute logits
