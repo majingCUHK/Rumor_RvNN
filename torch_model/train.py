@@ -15,7 +15,7 @@ from dgl.data.tree import SST, SSTBatch
 from tree_lstm import TreeLSTM
 from tree_lstm import GraphTransformer
 
-from logger import MyLogger
+from logger import
 
 SSTBatch = collections.namedtuple('SSTBatch', ['graph', 'mask', 'wordid', 'label'])
 def batcher(device):
@@ -60,6 +60,7 @@ def main(args):
     testset = SST(mode='test')
     test_loader = DataLoader(dataset=testset,
                              batch_size=100, collate_fn=batcher(device), shuffle=False, num_workers=0)
+
     if args.tree_lstm:
         model = TreeLSTM(trainset.num_vocabs,
                          args.x_size,
