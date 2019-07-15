@@ -204,7 +204,7 @@ class GraphTransformer(nn.Module):
             self.embedding.weight.data.copy_(pretrained_emb)
             self.embedding.weight.requires_grad = True
         self.dropout = nn.Dropout(dropout)
-        self.linear = nn.Linear(dmodel, num_classes)
+        self.linear = nn.Linear(2*dmodel, num_classes)
         self.cell = TransformerCell(dmodel)
 
     def forward(self, batch):
@@ -263,6 +263,8 @@ class GraphTransformer(nn.Module):
             States = self.cell.updateGlobalVec(extractS(g), extractH(g) )
             g = dgl.batch([updateS(tree, state) for (tree, state) in zip(dgl.unbatch(g), States)])
         # compute logits
-        h = self.dropout(g.ndata.pop('h'))
-        logits = self.linear(h)
+        h = th.cat([self.dropout(tree.ndata.pop('h').max(dim=0)[0]).unsqueeze(0) for tree in dgl.unbatch(g)], dim=0)
+        s = extractS(g)
+        final = th.cat([h, s], dim=1)
+        logits = self.linear(final)
         return logits
