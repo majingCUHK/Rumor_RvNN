@@ -55,7 +55,7 @@ import sys
 # represent words. The word is a int value stored in the "x" field.
 # The non-leaf nodes has a special word PAD_WORD. The sentiment
 # label is stored in the "y" feature field.
-trainset = SST(mode='tiny')  # the "tiny" set has only 5 trees
+trainset = SST()  # the "tiny" set has only 5 trees
 tiny_sst = trainset.trees
 num_vocabs = trainset.num_vocabs
 num_classes = trainset.num_classes
@@ -268,16 +268,16 @@ class TransformerCell(nn.Module):
         self.layerNorm1 = Transformer_Utils.LayerNorm(h_model)
         self.layerNorm2 = Transformer_Utils.LayerNorm(h_model)
 
-    @pysnooper.snoop('./debug.log')
+    @pysnooper.snoop('./res/debug.log')
     def message_func(self, edges):
         return {'h': edges.src['h']}
 
-    @pysnooper.snoop('./debug.log')
+    @pysnooper.snoop('./res/debug.log')
     def reduce_func(self, nodes):
         h_cat = nodes.mailbox['h']
         return {'c': h_cat}
 
-    @pysnooper.snoop('./debug.log')
+    @pysnooper.snoop('./res/debug.log')
     def apply_node_func(self, nodes):
         ctx = th.cat(
             (nodes.data['c'].view(nodes.data['c'].size(0), -1), nodes.data['h'], nodes.data['e'], nodes.data['s']), -1
@@ -285,18 +285,18 @@ class TransformerCell(nn.Module):
         h = self.attnLayer1(nodes.data['h'].unsqueeze(1), ctx, ctx)  # h: [nodes, dmodel] -> [nodes, 1, dmodel]  ctx: [nodes, kpairs, d_model]  --> [nodes, 1, dmodel]
         return {'h' : self.layerNorm1(F.relu(h.squeeze(1)))}
 
-    @pysnooper.snoop('./debug.log')
+    @pysnooper.snoop('./res/debug.log')
     def updateGlobalVec(self, S,  H):
-        assert H.dim() == 2 and S.dim() == 2 #H: [nodes, vector], S=[ [vector] ]
+        assert H.dim() == 3 and S.dim() == 3 #H: [tree, nodes, vector], S=[ tree, 1, vector ]
         ctx = th.cat(
-            (S, H), dim=0
-        )
+            (H, S), dim=1
+        )  # [tree, nodes+1, vector]
         States = self.layerNorm2(
             F.relu(
-                self.attnLayer2(S.unsqueeze(0), ctx.unsqueeze(0), ctx.unsqueeze(0))
+                self.attnLayer2(S, ctx, ctx, self_mask = True)
             )
-        )  # [1, 1, dmodel] [1, nodes+1, dmodel] ---> [1, 1, dmodel]
-        return States.squeeze(0).squeeze(0)   #[1, 1, dmodel] -> [dmodel]
+        )  # [tree, 1, dmodel] [tree, nodes+1, dmodel] ---> [tree, 1, dmodel]
+        return States.squeeze(1)   #[tree, 1, dmodel] -> [tree, dmodel]
 
 
 class GraphTransformer(nn.Module):
@@ -305,10 +305,12 @@ class GraphTransformer(nn.Module):
                  dmodel,
                  num_classes,
                  dropout,
+                 device,
                  T_step = 5,
                  pretrained_emb=None):
         super(GraphTransformer, self).__init__()
         self.dmodel = dmodel
+        self.device = device
         self.T_step = T_step
         self.embedding = nn.Embedding(num_vocabs, dmodel)
         if pretrained_emb is not None:
@@ -336,22 +338,48 @@ class GraphTransformer(nn.Module):
         logits : Tensor
             The prediction of each node.
         """
+        #----------utils function---------------
+        @pysnooper.snoop('./res/debug.log')
+        def InitS(tree):
+            tree.ndata['s'] = tree.ndata['e'].mean(dim=0).repeat(tree.number_of_nodes(), 1)
+            return tree
+
+        @pysnooper.snoop('./res/debug.log')
+        def updateS(tree, state):
+            assert state.dim() == 1
+            tree.ndata['s'] = state.repeat(tree.number_of_nodes(), 1)
+            return tree
+
+        @pysnooper.snoop('./res/debug.log')
+        def extractS(batchTree):
+            # [dmodel] --> [[dmodel]] --> [tree, dmodel] --> [tree, 1, dmodel]
+            s_list = [tree.ndata.pop('s')[0].unsqueeze(0) for tree in dgl.unbatch(batchTree)]
+            return th.cat(s_list, dim=0).unsqueeze(1)
+
+        @pysnooper.snoop('./res/debug.log')
+        def extractH(batchTree):
+            # [nodes, dmodel] --> [nodes, dmodel]--> [max_nodes, dmodel]--> [tree*_max_nodes, dmodel] --> [tree, max_nodes, dmodel]
+            h_list = [tree.ndata.pop('h') for tree in dgl.unbatch(batchTree)]
+            max_nodes = max([h.size(0) for h in h_list])
+            h_list = [th.cat([h, th.zeros([max_nodes-h.size(0), h.size(1)]).to(self.device)], dim=0).unsqueeze(0) for h in h_list]
+            return th.cat(h_list, dim=0)
+        #-----------------------------------------
+
         g = batch.graph
-        g.register_message_func(self.cell.message_func)
-        g.register_reduce_func(self.cell.reduce_func)
-        g.register_apply_node_func(self.cell.apply_node_func)
         # feed embedding
         embeds = self.embedding(batch.wordid * batch.mask)
-        g.ndata['c'] = th.zeros((g.number_of_nodes(), 2, self.dmodel))
+        g.ndata['c'] = th.zeros((g.number_of_nodes(), 2, self.dmodel)).to(self.device)
         g.ndata['e'] = embeds*batch.mask.float().unsqueeze(-1)
         g.ndata['h'] = embeds*batch.mask.float().unsqueeze(-1)
-        g.ndata['s'] = g.ndata['e'].mean(dim=0).repeat(g.number_of_nodes(), 1)
+        g = dgl.batch([InitS(gg) for gg in dgl.unbatch(g)])
         # propagate
         for i in range(self.T_step):
+            g.register_message_func(self.cell.message_func)
+            g.register_reduce_func(self.cell.reduce_func)
+            g.register_apply_node_func(self.cell.apply_node_func)
             dgl.prop_nodes_topo(g)
-            States = g.ndata.pop('s')[0].unsqueeze(0)
-            States = self.cell.updateGlobalVec(States, g.ndata['h'])
-            g.ndata['s'] = States.repeat(g.number_of_nodes(), 1)
+            States = self.cell.updateGlobalVec(extractS(g), extractH(g) )
+            g = dgl.batch([updateS(tree, state) for (tree, state) in zip(dgl.unbatch(g), States)])
         # compute logits
         h = self.dropout(g.ndata.pop('h'))
         logits = self.linear(h)
@@ -424,7 +452,7 @@ device = th.device('cpu')
 # hyper parameters
 x_size = 256
 h_size = 256
-dropout = 0.5
+dropout = 0.2
 lr = 0.05
 weight_decay = 1e-4
 epochs = 10
@@ -433,7 +461,10 @@ epochs = 10
 model = GraphTransformer(trainset.num_vocabs,
                          x_size,
                          trainset.num_classes,
-                         dropout)
+                         dropout,
+                         device,
+                         T_step = 5,
+                         pretrained_emb = trainset.pretrained_emb).to(device)
 print(model)
 
 # create the optimizer
@@ -451,7 +482,7 @@ def batcher(dev):
     return batcher_dev
 
 train_loader = DataLoader(dataset=tiny_sst,
-                          batch_size= 1,
+                          batch_size= 5,
                           collate_fn=batcher(device),
                           shuffle=False,
                           num_workers=0)
@@ -460,7 +491,9 @@ train_loader = DataLoader(dataset=tiny_sst,
 for epoch in range(epochs):
     for step, batch in enumerate(train_loader):
         g = batch.graph
+
         logits = model(batch)
+
         logp = F.log_softmax(logits, 1)
 
         loss = F.nll_loss(logp, batch.label, reduction='sum') 
