@@ -15,7 +15,7 @@ from dgl.data.tree import SST, SSTBatch
 from tree_lstm import TreeLSTM
 from tree_lstm import GraphTransformer
 
-from logger import
+from logger import MyLogger
 
 SSTBatch = collections.namedtuple('SSTBatch', ['graph', 'mask', 'wordid', 'label'])
 def batcher(device):
@@ -109,9 +109,10 @@ def main(args):
             if step >= 3:
                 t0 = time.time() # tik
 
+            root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i) == 0]
             logits = model(batch)
             logp = F.log_softmax(logits, 1)
-            loss = F.nll_loss(logp, batch.label, reduction='sum')
+            loss = F.nll_loss(logp, batch.label[root_ids], reduction='sum')
 
             optimizer.zero_grad()
             loss.backward()
@@ -122,14 +123,13 @@ def main(args):
 
             if step > 0 and step % args.log_every == 0:
                 pred = th.argmax(logits, 1)
-                acc = th.sum(th.eq(batch.label, pred))
-                root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i)==0]
-                root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy()[root_ids])
+                acc = th.sum(th.eq(batch.label[root_ids], pred))
+                root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy())
 
                 print("Epoch {:05d} | Step {:05d} | Loss {:.4f} | Acc {:.4f} | Root Acc {:.4f} | Time(s) {:.4f}".format(
-                    epoch, step, loss.item(), 1.0*acc.item()/len(batch.label), 1.0*root_acc/len(root_ids), np.mean(dur)))
+                    epoch, step, loss.item(), 1.0*acc.item()/len(root_ids), 1.0*root_acc/len(root_ids), np.mean(dur)))
                 logger.info("Epoch {:05d} | Step {:05d} | Loss {:.4f} | Acc {:.4f} | Root Acc {:.4f} | Time(s) {:.4f}".format(
-                    epoch, step, loss.item(), 1.0 * acc.item() / len(batch.label), 1.0 * root_acc / len(root_ids),
+                    epoch, step, loss.item(), 1.0 * acc.item() / len(root_ids), 1.0 * root_acc / len(root_ids),
                     np.mean(dur)))
         print('Epoch {:05d} training time {:.4f}s'.format(epoch, time.time() - t_epoch))
         logger.info('Epoch {:05d} training time {:.4f}s'.format(epoch, time.time() - t_epoch))
@@ -142,10 +142,10 @@ def main(args):
             with th.no_grad():
                 logits = model(batch)
             pred = th.argmax(logits, 1)
-            acc = th.sum(th.eq(batch.label, pred)).item()
-            accs.append([acc, len(batch.label)])
-            root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i)==0]
-            root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy()[root_ids])
+            root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i) == 0]
+            acc = th.sum(th.eq(batch.label[root_ids], pred)).item()
+            accs.append([acc, len(root_ids)])
+            root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy())
             root_accs.append([root_acc, len(root_ids)])
 
         dev_acc = 1.0*np.sum([x[0] for x in accs])/np.sum([x[1] for x in accs])
@@ -181,10 +181,10 @@ def main(args):
             logits = model(batch)
 
         pred = th.argmax(logits, 1)
-        acc = th.sum(th.eq(batch.label, pred)).item()
-        accs.append([acc, len(batch.label)])
-        root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i)==0]
-        root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy()[root_ids])
+        root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i) == 0]
+        acc = th.sum(th.eq(batch.label[root_ids], pred)).item()
+        accs.append([acc, len(root_ids)])
+        root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy())
         root_accs.append([root_acc, len(root_ids)])
 
     test_acc = 1.0*np.sum([x[0] for x in accs])/np.sum([x[1] for x in accs])

@@ -1,0 +1,1 @@
+2019-07-15 20:57:08,728 25081 Namespace(Adadelta=False, Adagrad=True, Adam=False, T_step=5, batch_size=25, child_sum=False, dropout=0.5, epochs=100, gpu=0, graph_transformer=False, h_size=64, log_every=5, logfile='./tmp.log', lr=0.05, modelId='1563195428.7273045', seed=41, tree_lstm=True, weight_decay=0.0001, x_size=64)

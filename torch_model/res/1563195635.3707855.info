@@ -1,0 +1,11 @@
+2019-07-15 21:00:35,371 25186 Namespace(Adadelta=False, Adagrad=True, Adam=False, T_step=5, batch_size=25, child_sum=False, dropout=0.5, epochs=100, gpu=0, graph_transformer=False, h_size=64, log_every=5, logfile='./tmp.log', lr=0.05, modelId='1563195635.3707855', seed=41, tree_lstm=True, weight_decay=0.0001, x_size=64)
+2019-07-15 21:00:51,108 25186 TreeLSTM(
+  (embedding): Embedding(19536, 64)
+  (dropout): Dropout(p=0.5)
+  (linear): Linear(in_features=64, out_features=5, bias=True)
+  (cell): TreeLSTMCell(
+    (W_iou): Linear(in_features=64, out_features=192, bias=False)
+    (U_iou): Linear(in_features=128, out_features=192, bias=False)
+    (U_f): Linear(in_features=128, out_features=128, bias=True)
+  )
+)

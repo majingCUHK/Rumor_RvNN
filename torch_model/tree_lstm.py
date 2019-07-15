@@ -111,7 +111,7 @@ class TreeLSTM(nn.Module):
         # propagate
         dgl.prop_nodes_topo(g)
         # compute logits
-        h = self.dropout(g.ndata.pop('h'))
+        h = th.cat( [self.dropout(tree.ndata.pop('h').max(dim=0)[0]).unsqueeze(0) for tree in dgl.unbatch(g)], dim=0)
         logits = self.linear(h)
         return logits
 
