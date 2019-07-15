@@ -1,5 +1,31 @@
 # -*- coding: utf-8 -*-
 import TD_RvNN
+import dgl
+import tree_loader
+
+
+class TwitterRumorTrees(object):
+    def __init__(self):
+        super(TwitterRumorTrees, self).__init__()
+        self.trees = []
+
+    def __init__(self, nx_trees, labels):
+        super(TwitterRumorTrees, self).__init__()
+        def nx2g(nx):
+            g = dgl.DGLGraph()
+            g.from_networkx(nx, node_attrs=['word', 'index'])
+            return g
+        self.trees = [nx2g(tr) for tr in nx_trees]
+        self.labels = labels
+        assert len(self.trees) == len(self.labels)
+        return
+
+    def __getitem__(self, idx):
+        return [self.trees[idx], self.labels[idx]]
+
+    def __len__(self):
+        return len(self.trees)
+
 
 ################################### tools #####################################
 def str2matrix(Str, MaxL):  # str = index:wordfreq index:wordfreq
@@ -58,9 +84,24 @@ def constructTree(tree):
             root = nodeC
     ## 3. convert tree to DNN input
     parent_num = tree[j]['parent_num']
-    ini_x, ini_index = str2matrix("0:0", tree[j]['maxL'])
-    x_word, x_index, tree, leaf_idxs = TD_RvNN.gen_nn_inputs(root, ini_x)
+    x_word, x_index, tree, leaf_idxs = TD_RvNN.gen_nn_inputs(root)
     return x_word, x_index, tree, leaf_idxs
+
+def Convert2Nx(trees, words, indexs):
+    nx_trees = [tree_loader.Tree(l).tree for l in trees]
+    def UpdateNodesAttr(tree, node_attrs, attr_name):
+        [tree.nodes[i].__setitem__(attr_name, node_attrs[i]) for i in tree.nodes()]
+        return
+
+    [UpdateNodesAttr(tree, nodes_word, "word") for (tree, nodes_word) in zip(nx_trees, words)]
+    print("words completed")
+    print("tree, index len:", [(len(tree.nodes()), len(index)) for (tree, index) in zip(nx_trees, words)])
+    print("tree, word len:", [(len(tree.nodes()), len(index)) for (tree, index) in zip(nx_trees, indexs)])
+    [UpdateNodesAttr(tree, nodes_index, "index") for (tree, nodes_index) in zip(nx_trees, indexs)]
+    print("indexs completed")
+    # [UpdateNodesAttr(tree, nodes_y, "y") for (tree, nodes_y) in zip(nx_trees, ys)]
+    # print("ys completed")
+    return nx_trees
 
 
 ################################# loas data ###################################
@@ -134,5 +175,10 @@ def loadData(treePath, labelPath, trainPath, testPath):
     print("test no:", len(tree_test), len(word_test), len(index_test), len(leaf_idxs_test), len(y_test))
     print("dim1 for 0:", len(tree_train[0]), len(word_train[0]), len(index_train[0]))
     print("case 0:", tree_train[0][0], word_train[0][0], index_train[0][0], leaf_idxs_train[0])
-    return tree_train, word_train, index_train, leaf_idxs_train, y_train, tree_test, word_test, index_test, leaf_idxs_test, y_test
 
+    nx_train = Convert2Nx(tree_train, word_train, index_train)
+    nx_test = Convert2Nx(tree_test, word_test, index_test)
+
+    return TwitterRumorTrees(nx_train, y_train), TwitterRumorTrees(nx_test, y_test)
+
+    # return

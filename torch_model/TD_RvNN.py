@@ -17,7 +17,7 @@ class Node_tweet(object):
         self.parent = None
         
 ################################# generate tree structure ##############################
-def gen_nn_inputs(root_node, ini_word):
+def gen_nn_inputs(root_node):
     """Given a root node, returns the appropriate inputs to NN.
 
     The NN takes in
@@ -28,14 +28,11 @@ def gen_nn_inputs(root_node, ini_word):
             f(a, b) -> c should happen on step i.
 
     """
-    root_node.idx = 1
-    tree = [[0, root_node.idx]]
+    root_node.idx = 0
     X_word, X_index = [root_node.word], [root_node.index]
-    internal_tree, internal_word, internal_index, leaf_idxs = _get_tree_path(root_node)
-    tree.extend(internal_tree)
+    tree, internal_word, internal_index, leaf_idxs = _get_tree_path(root_node)
     X_word.extend(internal_word)
     X_index.extend(internal_index)
-    X_word.append(ini_word)
     return (np.array(X_word, dtype='float32'),
             np.array(X_index, dtype='int32'),
             np.array(tree, dtype='int32'),

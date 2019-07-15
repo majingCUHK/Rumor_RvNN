@@ -16,18 +16,21 @@ import BiD_RvNN
 import math
 import torch
 import BU_loadData
-import TD_loadData
+import DataConstructer
 import tree_loader
 
 import numpy as np
 import TD_RvNN
 import time
 import random
+import torch as th
 import torch.optim as optim
 import datetime
+from collections import namedtuple
 from evaluate import *
 import dgl
-
+from DataConstructer import TwitterRumorTrees
+from torch.utils.data import DataLoader
 obj = "Twitter15" # choose dataset, you can choose either "Twitter15" or "Twitter16"
 fold = "3" # fold index, choose from 0-4
 tag = ""
@@ -48,19 +51,46 @@ labelPath = "../resource/"+obj+"_label_All.txt"
 ##################################### MAIN ####################################        
 ## 1. load tree & word & index & label
 # BU_tree_train, BU_word_train, BU_index_train, BU_y_train, BU_tree_test, BU_word_test, BU_index_test, BU_y_test = BU_loadData.loadData(treePath,labelPath,trainPath,testPath)
-TD_tree_train, TD_word_train, TD_index_train, TD_leaf_idxs_train, TD_y_train, TD_tree_test, TD_word_test, TD_index_test, TD_leaf_idxs_test, TD_y_test = TD_loadData.loadData(treePath,labelPath,trainPath,testPath)
+# TD_tree_train, TD_word_train, TD_index_train, TD_leaf_idxs_train, TD_y_train, TD_tree_test, TD_word_test, TD_index_test, TD_leaf_idxs_test, TD_y_test = DataLoader.loadData(treePath,labelPath,trainPath,testPath)
 # it can be tried to combine the BU_tree and the TD_tree to output an adjacent matrix, parent matrix should be the transposition matrix of children matrix
-# print("first BU tree:", BU_tree_train[0])
-print("first TD tree:", TD_tree_train[0])
-# print("first BU words:", BU_word_train[0])
-print("first TD words:", TD_word_train[0])
-# print("first BU indexs:", BU_index_train[0])
-print("first TD indexs:", TD_index_train[0])
-TD_tree_train = [tree_loader.Tree(l) for l in TD_tree_train]
-TD_tree_test = [tree_loader.Tree(l) for l in TD_tree_test]
+# # print("first BU tree:", BU_tree_train[0])
+# print("first TD tree:", TD_tree_train[0])
+# # print("first BU words:", BU_word_train[0])
+# print("first TD words:", TD_word_train[0])
+# # print("first BU indexs:", BU_index_train[0])
+# print("first TD indexs:", TD_index_train[0])
+# TD_tree_train = [tree_loader.Tree(l) for l in TD_tree_train]
+# TD_tree_test = [tree_loader.Tree(l) for l in TD_tree_test]
+#
+# g_tst = dgl.DGLGraph(TD_tree_train[0].tree)
+# print(g_tst)
+tree_train, tree_test = DataConstructer.loadData(treePath,labelPath,trainPath,testPath)
 
-g_tst = dgl.DGLGraph(TD_tree_train[0].tree)
-print(g_tst)
+TwitterBatch = namedtuple('TwitterBatch', ['trees', 'word', 'index', 'label'])
+
+device = th.device('cpu')
+def batcher(device):
+    def batcher_dev(batch):
+        # print("batch:", batch[0])
+        batch_trees = [item[0] for item in batch]
+        labels = [item[1] for item  in batch]
+        return TwitterBatch(trees = batch_trees,
+                        word = [tree.ndata['word'].to(device) for tree in batch_trees],
+                        index = [tree.ndata['index'].to(device) for tree in batch_trees],
+                        label = torch.tensor(labels).to(device))
+    return batcher_dev
+
+
+train_loader = DataLoader(dataset=tree_train,
+                          batch_size=2,
+                          shuffle=True,
+                          collate_fn=batcher(device)
+                          )
+
+for item in train_loader:
+    print("items:", item)
+    break
+
 sys.exit(0)
 
 def CompLoss(pred, ylabel):

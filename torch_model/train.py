@@ -15,7 +15,7 @@ from dgl.data.tree import SST, SSTBatch
 from tree_lstm import TreeLSTM
 from tree_lstm import GraphTransformer
 
-from logger import
+from logger import MyLogger
 
 SSTBatch = collections.namedtuple('SSTBatch', ['graph', 'mask', 'wordid', 'label'])
 def batcher(device):
