@@ -278,12 +278,15 @@ class TransformerCell(nn.Module):
         return {'c': h_cat}
 
     @pysnooper.snoop('./res/debug.log')
-    def apply_node_func(self, nodes):
+    def apply_node_func(self, graph):
+        print("apply_node_func 1")
         ctx = th.cat(
-            (nodes.data['c'].view(nodes.data['c'].size(0), -1), nodes.data['h'], nodes.data['e'], nodes.data['s']), -1
-        ).view(nodes.data['c'].size(0), -1, self.h_model)
-        h = self.attnLayer1(nodes.data['h'].unsqueeze(1), ctx, ctx)  # h: [nodes, dmodel] -> [nodes, 1, dmodel]  ctx: [nodes, kpairs, d_model]  --> [nodes, 1, dmodel]
-        return {'h' : self.layerNorm1(F.relu(h.squeeze(1)))}
+            (graph.ndata['c'].view(graph.ndata['c'].size(0), -1), graph.ndata['h'], graph.ndata['e'], graph.ndata['s']), -1
+        ).view(graph.ndata['c'].size(0), -1, self.h_model)
+        print("apply_node_func 2")
+        h = self.attnLayer1(graph.ndata['h'].unsqueeze(1), ctx, ctx)  # h: [nodes, dmodel] -> [nodes, 1, dmodel]  ctx: [nodes, kpairs, d_model]  --> [nodes, 1, dmodel]
+        print("apply_node_func 3")
+        return self.layerNorm1(F.relu(h.squeeze(1)))
 
     @pysnooper.snoop('./res/debug.log')
     def updateGlobalVec(self, S,  H):
@@ -376,9 +379,16 @@ class GraphTransformer(nn.Module):
         for i in range(self.T_step):
             g.register_message_func(self.cell.message_func)
             g.register_reduce_func(self.cell.reduce_func)
-            g.register_apply_node_func(self.cell.apply_node_func)
+            # g.register_apply_node_func(self.cell.apply_node_func)
+            print("prop_nodes_top %d" % i)
             dgl.prop_nodes_topo(g)
+            print("prop_nodes_top %d completed"% i)
+            h_new = self.cell.apply_node_func(g)
+            print("h_new size:", h_new.size())
+            g.ndata['h'] = h_new
+            print("update node state completed at %d times!"%i)
             States = self.cell.updateGlobalVec(extractS(g), extractH(g) )
+            print("update Global vec %d" % i)
             g = dgl.batch([updateS(tree, state) for (tree, state) in zip(dgl.unbatch(g), States)])
         # compute logits
         h = self.dropout(g.ndata.pop('h'))
