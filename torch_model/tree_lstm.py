@@ -264,7 +264,7 @@ class GraphTransformer(nn.Module):
             g = dgl.batch([updateS(tree, state) for (tree, state) in zip(dgl.unbatch(g), States)])
         # compute logits
         h = th.cat([self.dropout(tree.ndata.pop('h').max(dim=0)[0]).unsqueeze(0) for tree in dgl.unbatch(g)], dim=0)
-        s = extractS(g)
+        s = extractS(g).squeeze(dim=1)
         final = th.cat([h, s], dim=1)
         logits = self.linear(final)
         return logits
