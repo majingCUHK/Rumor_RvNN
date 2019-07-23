@@ -10,6 +10,7 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 import dgl
+import pysnooper
 
 class TreeLSTMCell(nn.Module):
     def __init__(self, x_size, h_size):
@@ -19,22 +20,27 @@ class TreeLSTMCell(nn.Module):
         self.b_iou = nn.Parameter(th.zeros(1, 3 * h_size))
         self.U_f = nn.Linear(2 * h_size, 2 * h_size)
 
+    @pysnooper.snoop('./res/debug.log')
     def message_func(self, edges):
-        return {'h': edges.src['h'], 'c': edges.src['c']}
+        return {'h': edges.src['h'], 'c': edges.src['c'], 'max_h':edges.src['max_h']}
 
+    @pysnooper.snoop('./res/debug.log')
     def reduce_func(self, nodes):
         h_cat = nodes.mailbox['h'].view(nodes.mailbox['h'].size(0), -1)
         f = th.sigmoid(self.U_f(h_cat)).view(*nodes.mailbox['h'].size())
         c = th.sum(f * nodes.mailbox['c'], 1)
-        return {'iou': self.U_iou(h_cat), 'c': c}
+        max_h = nodes.mailbox['max_h'].max(dim=1)[0]
+        return {'iou': self.U_iou(h_cat), 'c': c, 'max_h': max_h}
 
+    @pysnooper.snoop('./res/debug.log')
     def apply_node_func(self, nodes):
         iou = nodes.data['iou'] + self.b_iou
         i, o, u = th.chunk(iou, 3, 1)
         i, o, u = th.sigmoid(i), th.sigmoid(o), th.tanh(u)
         c = i * u + nodes.data['c']
         h = o * th.tanh(c)
-        return {'h' : h, 'c' : c}
+        max_h = th.max(h, nodes.data['max_h'])
+        return {'h' : h, 'c' : c, 'max_h':max_h}
 
 class ChildSumTreeLSTMCell(nn.Module):
     def __init__(self, x_size, h_size):
@@ -108,10 +114,11 @@ class TreeLSTM(nn.Module):
         g.ndata['iou'] = self.cell.W_iou(self.dropout(embeds)) * batch.mask.float().unsqueeze(-1)
         g.ndata['h'] = th.zeros((g.number_of_nodes(), self.x_size)).to(self.device)
         g.ndata['c'] = th.zeros((g.number_of_nodes(), self.x_size)).to(self.device)
+        g.ndata['max_h'] = th.zeros((g.number_of_nodes(), self.x_size)).to(self.device)
         # propagate
         dgl.prop_nodes_topo(g)
         # compute logits
-        h = th.cat( [self.dropout(tree.ndata.pop('h').max(dim=0)[0]).unsqueeze(0) for tree in dgl.unbatch(g)], dim=0)
+        h = self.dropout(g.ndata.pop('h') + g.ndata.pop('max_h'))
         logits = self.linear(h)
         return logits
 
@@ -165,15 +172,12 @@ class TransformerCell(nn.Module):
         h_cat = nodes.mailbox['h']
         return {'c': h_cat}
 
-    @pysnooper.snoop('./res/debug.log')
-    def apply_node_func(self, graph):
+    def apply_node_func(self, nodes):
         ctx = th.cat(
-            (graph.ndata['c'].view(graph.ndata['c'].size(0), -1), graph.ndata['h'], graph.ndata['e'], graph.ndata['s']),
-            -1
-        ).view(graph.ndata['c'].size(0), -1, self.h_model)
-        h = self.attnLayer1(graph.ndata['h'].unsqueeze(1), ctx,
-                            ctx)  # h: [nodes, dmodel] -> [nodes, 1, dmodel]  ctx: [nodes, kpairs, d_model]  --> [nodes, 1, dmodel]
-        return self.layerNorm1(F.relu(h.squeeze(1)))
+            (nodes.data['c'].view(nodes.data['c'].size(0), -1), nodes.data['h'], nodes.data['e'], nodes.data['s']), -1
+        ).view(nodes.data['c'].size(0), -1, self.h_model)
+        h = self.attnLayer1(nodes.data['h'].unsqueeze(1), ctx, ctx)  # h: [nodes, dmodel] -> [nodes, 1, dmodel]  ctx: [nodes, kpairs, d_model]  --> [nodes, 1, dmodel]
+        return {'h' : self.layerNorm1(F.relu(h.squeeze(1)))}
 
     def updateGlobalVec(self, S,  H):
         assert H.dim() == 3 and S.dim() == 3 #H: [tree, nodes, vector], S=[ tree, 1, vector ]
@@ -228,24 +232,20 @@ class GraphTransformer(nn.Module):
             The prediction of each node.
         """
         #----------utils function---------------
-        @pysnooper.snoop('./res/debug.log')
         def InitS(tree):
             tree.ndata['s'] = tree.ndata['e'].mean(dim=0).repeat(tree.number_of_nodes(), 1)
             return tree
 
-        @pysnooper.snoop('./res/debug.log')
         def updateS(tree, state):
             assert state.dim() == 1
             tree.ndata['s'] = state.repeat(tree.number_of_nodes(), 1)
             return tree
 
-        @pysnooper.snoop('./res/debug.log')
         def extractS(batchTree):
             # [dmodel] --> [[dmodel]] --> [tree, dmodel] --> [tree, 1, dmodel]
             s_list = [tree.ndata.pop('s')[0].unsqueeze(0) for tree in dgl.unbatch(batchTree)]
             return th.cat(s_list, dim=0).unsqueeze(1)
 
-        @pysnooper.snoop('./res/debug.log')
         def extractH(batchTree):
             # [nodes, dmodel] --> [nodes, dmodel]--> [max_nodes, dmodel]--> [tree*_max_nodes, dmodel] --> [tree, max_nodes, dmodel]
             h_list = [tree.ndata.pop('h') for tree in dgl.unbatch(batchTree)]
@@ -265,10 +265,8 @@ class GraphTransformer(nn.Module):
         for i in range(self.T_step):
             g.register_message_func(self.cell.message_func)
             g.register_reduce_func(self.cell.reduce_func)
-            # g.register_apply_node_func(self.cell.apply_node_func)
+            g.register_apply_node_func(self.cell.apply_node_func)
             dgl.prop_nodes_topo(g)
-            h_new = self.cell.apply_node_func(g)
-            g.ndata['h'] = h_new
             States = self.cell.updateGlobalVec(extractS(g), extractH(g) )
             g = dgl.batch([updateS(tree, state) for (tree, state) in zip(dgl.unbatch(g), States)])
         # compute logits

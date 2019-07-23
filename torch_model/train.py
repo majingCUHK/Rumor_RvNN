@@ -21,7 +21,6 @@ SSTBatch = collections.namedtuple('SSTBatch', ['graph', 'mask', 'wordid', 'label
 def batcher(device):
     def batcher_dev(batch):
         batch_trees = dgl.batch(batch)
-        # batch_trees.ndata['y'].apply_(lambda x: 1 if x==2 else (0 if x < 2 else 2))
         return SSTBatch(graph=batch_trees,
                         mask=batch_trees.ndata['mask'].to(device),
                         wordid=batch_trees.ndata['x'].to(device),
@@ -46,9 +45,6 @@ def main(args):
         th.cuda.set_device(args.gpu)
 
     trainset = SST()
-
-    inv_vocab = {v:k for k,v in trainset.vocab.items()}
-
     train_loader = DataLoader(dataset=trainset,
                               batch_size=args.batch_size,
                               collate_fn=batcher(device),
@@ -69,8 +65,7 @@ def main(args):
         model = TreeLSTM(trainset.num_vocabs,
                          args.x_size,
                          args.h_size,
-                         # trainset.num_classes,
-                         3, 
+                         trainset.num_classes,
                          args.dropout,
                          device,
                          cell_type='childsum' if args.child_sum else 'nary',
@@ -86,47 +81,12 @@ def main(args):
     print(model)
     logger.info(model)
 
-    def test(args, epoch):
-        logger = MyLogger('%s_test_%d' % (args.modelId, epoch))
-        print(args)
-        logger.info(args)
-        accs = []
-        root_accs = []
-        model.eval()
-        for step, batch in enumerate(dev_loader):
-            with th.no_grad():
-                logits = model(batch)
-            pred = th.argmax(logits, 1)
-            root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i) == 0]
-            # [logger.info('%d|%d %s'%( p, t, '+'.join([inv_vocab[v] if v>=0 else '' for v in tree.ndata['x'].tolist()]) if p==t else '-'.join([inv_vocab[v] if v>=0 else '' for v in tree.ndata['x'].tolist()])) ) for (p, t, tree) in zip(pred, batch.label[root_ids], dgl.unbatch(batch))]
-            for (p, t, tree) in zip(pred, batch.label[root_ids], dgl.unbatch(batch.graph)):
-                l = [inv_vocab[v] if v >= 0 else '' for v in tree.ndata['x'].tolist()]
-                if p == t:
-                    logger.info('   %d|%d %s' % (p, t, ' '.join(l)))
-                else:
-                    logger.info('   %d|%d %s' % (p, t, ' '.join(l)))
-
-            acc = th.sum(th.eq(batch.label[root_ids], pred)).item()
-            accs.append([acc, len(root_ids)])
-            root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy())
-            root_accs.append([root_acc, len(root_ids)])
-
-        dev_acc = 1.0 * np.sum([x[0] for x in accs]) / np.sum([x[1] for x in accs])
-        dev_root_acc = 1.0 * np.sum([x[0] for x in root_accs]) / np.sum([x[1] for x in root_accs])
-        print("Epoch {:05d} | Dev Acc {:.4f} | Root Acc {:.4f}".format(
-            epoch, dev_acc, dev_root_acc))
-        logger.info("Epoch {:05d} | Dev Acc {:.4f} | Root Acc {:.4f}".format(
-            epoch, dev_acc, dev_root_acc))
-        return dev_acc, dev_root_acc
-
-    params_ex_emb = [x for x in list(model.parameters()) if x.requires_grad and x.size(0) != trainset.num_vocabs]
+    params_ex_emb =[x for x in list(model.parameters()) if x.requires_grad and x.size(0)!=trainset.num_vocabs]
     params_emb = list(model.embedding.parameters())
-    if args.retrain:
-        model.load_state_dict(th.load('./res/best_{}.pkl'.format(args.modelId)))
-    else:
-        for p in params_ex_emb:
-            if p.dim() > 1:
-                INIT.xavier_uniform_(p)
+
+    for p in params_ex_emb:
+        if p.dim() > 1:
+            INIT.xavier_uniform_(p)
 
     if args.Adagrad:
         optimizer = optim.Adagrad([
@@ -149,10 +109,9 @@ def main(args):
             if step >= 3:
                 t0 = time.time() # tik
 
-            root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i) == 0]
             logits = model(batch)
             logp = F.log_softmax(logits, 1)
-            loss = F.nll_loss(logp, batch.label[root_ids], reduction='sum')
+            loss = F.nll_loss(logp, batch.label, reduction='sum')
 
             optimizer.zero_grad()
             loss.backward()
@@ -163,19 +122,38 @@ def main(args):
 
             if step > 0 and step % args.log_every == 0:
                 pred = th.argmax(logits, 1)
-                acc = th.sum(th.eq(batch.label[root_ids], pred))
-                root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy())
+                acc = th.sum(th.eq(batch.label, pred))
+                root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i)==0]
+                root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy()[root_ids])
 
                 print("Epoch {:05d} | Step {:05d} | Loss {:.4f} | Acc {:.4f} | Root Acc {:.4f} | Time(s) {:.4f}".format(
-                    epoch, step, loss.item(), 1.0*acc.item()/len(root_ids), 1.0*root_acc/len(root_ids), np.mean(dur)))
+                    epoch, step, loss.item(), 1.0*acc.item()/len(batch.label), 1.0*root_acc/len(root_ids), np.mean(dur)))
                 logger.info("Epoch {:05d} | Step {:05d} | Loss {:.4f} | Acc {:.4f} | Root Acc {:.4f} | Time(s) {:.4f}".format(
-                    epoch, step, loss.item(), 1.0 * acc.item() / len(root_ids), 1.0 * root_acc / len(root_ids),
+                    epoch, step, loss.item(), 1.0 * acc.item() / len(batch.label), 1.0 * root_acc / len(root_ids),
                     np.mean(dur)))
         print('Epoch {:05d} training time {:.4f}s'.format(epoch, time.time() - t_epoch))
         logger.info('Epoch {:05d} training time {:.4f}s'.format(epoch, time.time() - t_epoch))
 
         # eval on dev set
-        dev_root_acc, dev_acc = test(args, epoch)
+        accs = []
+        root_accs = []
+        model.eval()
+        for step, batch in enumerate(dev_loader):
+            with th.no_grad():
+                logits = model(batch)
+            pred = th.argmax(logits, 1)
+            acc = th.sum(th.eq(batch.label, pred)).item()
+            accs.append([acc, len(batch.label)])
+            root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i)==0]
+            root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy()[root_ids])
+            root_accs.append([root_acc, len(root_ids)])
+
+        dev_acc = 1.0*np.sum([x[0] for x in accs])/np.sum([x[1] for x in accs])
+        dev_root_acc = 1.0*np.sum([x[0] for x in root_accs])/np.sum([x[1] for x in root_accs])
+        print("Epoch {:05d} | Dev Acc {:.4f} | Root Acc {:.4f}".format(
+            epoch, dev_acc, dev_root_acc))
+        logger.info("Epoch {:05d} | Dev Acc {:.4f} | Root Acc {:.4f}".format(
+            epoch, dev_acc, dev_root_acc))
 
         if dev_root_acc > best_dev_acc:
             best_dev_acc = dev_root_acc
@@ -203,10 +181,10 @@ def main(args):
             logits = model(batch)
 
         pred = th.argmax(logits, 1)
-        root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i) == 0]
-        acc = th.sum(th.eq(batch.label[root_ids], pred)).item()
-        accs.append([acc, len(root_ids)])
-        root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy())
+        acc = th.sum(th.eq(batch.label, pred)).item()
+        accs.append([acc, len(batch.label)])
+        root_ids = [i for i in range(batch.graph.number_of_nodes()) if batch.graph.out_degree(i)==0]
+        root_acc = np.sum(batch.label.cpu().data.numpy()[root_ids] == pred.cpu().data.numpy()[root_ids])
         root_accs.append([root_acc, len(root_ids)])
 
     test_acc = 1.0*np.sum([x[0] for x in accs])/np.sum([x[1] for x in accs])
@@ -237,10 +215,7 @@ if __name__ == '__main__':
     parser.add_argument('--Adadelta', type=bool, default=False)
     parser.add_argument('--tree-lstm', type=bool, default=False)
     parser.add_argument('--graph-transformer', type=bool, default=False)
-    # parser.add_argument('--attnHead', type=int, default=8)
     parser.add_argument('--T-step', type=int, default=5)
     parser.add_argument('--logfile', type=str, default="./tmp.log")
-    parser.add_argument('--retrain', type=bool, default=False)
     args = parser.parse_args()
     main(args)
-    # test(args)
