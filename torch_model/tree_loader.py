@@ -53,6 +53,7 @@ class Tree(object):
     def Parse_Lists2Tree(self, lists):
         for l in lists:
             if l[0] == 0:
+                self.tree.add_node(l[1])
                 self.tree.add_edge(l[0],l[1])
             else:
                 self.tree.add_node(l[1])
@@ -66,6 +67,7 @@ class Tree(object):
             if out_degrees[node] == 0:
                 leaf_nodes.append(node)
         return leaf_nodes
+
     def get_layers(self):
         root = 0
         thislayer = [root]
