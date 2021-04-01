@@ -83,7 +83,7 @@ def constructTree(tree):
     ## 1. ini tree node
     index2node = {}
     for i in tree:
-        node = tree_gru.Node_tweet(idx=i)
+        node = BU_RvNN.Node_tweet(idx=i)
         index2node[i] = node
     ## 2. construct tree
     for j in tree:
@@ -104,7 +104,7 @@ def constructTree(tree):
            root = nodeC
     ## 3. convert tree to DNN input    
     degree = tree[j]['max_degree']   
-    x_word, x_index, tree = tree_gru.gen_nn_inputs(root, max_degree=degree, only_leaves_have_vals=False)    
+    x_word, x_index, tree = BU_RvNN.gen_nn_inputs(root, max_degree=degree, only_leaves_have_vals=False)    
     return x_word, x_index, tree       
                
 ################################# loas data ###################################
