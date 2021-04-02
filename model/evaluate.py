@@ -8,8 +8,7 @@
 """
 
 import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
+
 
 import random
 import os
@@ -25,7 +24,7 @@ def evaluation(prediction, y): ## no. of time series
     FN = 0
     e = 0.000001
     threshhold = 0.5
-    fout = open(outevalPath, 'w')
+    fout = open(outevalPath, 'w',encoding='utf-8')
     for i in range(len(y)):
         fout.write(str(y[i][0])+"\t"+str(prediction[i][0])+"\n")
         if y[i][0] == 1 and prediction[i][0] >= threshhold:
@@ -167,13 +166,13 @@ def evaluation_4class(prediction, y): # 4 dim
             'C4:',Acc4, Prec4, Recll4, F4]
     
 def write2Predict_oneVSall(prediction, y, resultPath): ## no. of time series 
-    fout = open(resultPath, 'w')
+    fout = open(resultPath, 'w',encoding='utf-8')
     for i in range(len(y)):
         fout.write(str(prediction[i][0])+"\n")
     fout.close()
     
 def write2Predict_4class(prediction, y, resultPath): ## no. of time series 
-    fout = open(resultPath, 'w')
+    fout = open(resultPath, 'w',encoding='utf-8')
     for i in range(len(y)):
         data1 = str(y[i][0])+' '+str(y[i][1])+' '+str(y[i][2])+' '+str(y[i][3])
         data2 = str(prediction[i][0])+' '+str(prediction[i][1])+' '+str(prediction[i][2])+' '+str(prediction[i][3])

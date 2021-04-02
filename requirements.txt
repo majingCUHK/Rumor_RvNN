@@ -1,0 +1,15 @@
+Package       Version
+------------- -------
+numpy         1.19.5
+pip           21.0.1
+pkg-resources 0.0.0
+scipy         1.5.4
+setuptools    54.2.0
+six           1.15.0
+Theano        0.8.2
+wheel         0.36.2
+numpy==1.19.5
+pkg-resources==0.0.0
+scipy==1.5.4
+six==1.15.0
+Theano==0.8.2
