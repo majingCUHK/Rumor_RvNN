@@ -3,8 +3,7 @@ __doc__ = """Tree GRU aka Recursive Neural Networks."""
 import numpy as np
 import theano
 from theano import tensor as T
-#from collections import OrderedDict
-from theano.compat.python2x import OrderedDict
+from collections import OrderedDict
 
 
 theano.config.floatX = 'float64'
@@ -153,7 +152,7 @@ class RvNN(object):
                 degree=2, momentum=0.9,
                  trainable_embeddings=True,
                  labels_on_nonroot_nodes=False,
-                 irregular_tree=True):                 
+                 irregular_tree=True):
         assert word_dim > 1 and hidden_dim > 1
         self.word_dim = word_dim
         self.hidden_dim = hidden_dim
@@ -196,11 +195,11 @@ class RvNN(object):
 
         self._predict = theano.function([self.x_word, self.x_index, self.tree], self.pred_y)
 
-    
+
     def train_step_up(self, x_word, x_index, tree , y, lr):
         #x_word, x_index, tree = gen_nn_inputs(root_node, max_degree=self.degree, only_leaves_have_vals=False)
         return self._train(x_word, x_index, tree[:, :-1], y, lr)
-        
+
     def evaluate(self, root_node):
         x, tree = gen_nn_inputs(root_node, max_degree=self.degree, only_leaves_have_vals=False)
         self._check_input(x, tree)
@@ -321,4 +320,3 @@ class RvNN(object):
             self.momentum_velocity_[n] = update_step
             updates[param] = param + update_step
         return updates
-        

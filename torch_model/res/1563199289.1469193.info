@@ -1,0 +1,124 @@
+2019-07-15 22:01:29,147 3063 Namespace(Adadelta=False, Adagrad=True, Adam=False, T_step=5, batch_size=25, child_sum=False, dropout=0.5, epochs=100, gpu=0, graph_transformer=False, h_size=256, log_every=5, logfile='./tmp.log', lr=0.05, modelId='1563199289.1469193', seed=41, tree_lstm=False, weight_decay=0.0001, x_size=256)
+2019-07-15 22:01:42,259 3063 GraphTransformer(
+  (embedding): Embedding(19536, 256)
+  (dropout): Dropout(p=0.5)
+  (linear): Linear(in_features=512, out_features=5, bias=True)
+  (cell): TransformerCell(
+    (attnLayer1): MultiHeadedAttention(
+      (linears): ModuleList(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): Linear(in_features=256, out_features=256, bias=True)
+        (2): Linear(in_features=256, out_features=256, bias=True)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+      )
+      (dropout): Dropout(p=0.1)
+    )
+    (attnLayer2): MultiHeadedAttention(
+      (linears): ModuleList(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): Linear(in_features=256, out_features=256, bias=True)
+        (2): Linear(in_features=256, out_features=256, bias=True)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+      )
+      (dropout): Dropout(p=0.1)
+    )
+    (layerNorm1): LayerNorm()
+    (layerNorm2): LayerNorm()
+  )
+)
+2019-07-15 22:09:47,246 3063 Epoch 00000 | Step 00005 | Loss 333.9659 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 76.0256
+2019-07-15 22:16:13,950 3063 Epoch 00000 | Step 00010 | Loss 156.0333 | Acc 0.1200 | Root Acc 0.1200 | Time(s) 76.8460
+2019-07-15 22:22:38,531 3063 Epoch 00000 | Step 00015 | Loss 112.2649 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 76.8720
+2019-07-15 22:28:45,478 3063 Epoch 00000 | Step 00020 | Loss 55.1196 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 75.9039
+2019-07-15 22:35:30,964 3063 Epoch 00000 | Step 00025 | Loss 71.8685 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 77.0324
+2019-07-15 22:42:26,797 3063 Epoch 00000 | Step 00030 | Loss 59.0028 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.1273
+2019-07-15 22:49:03,657 3063 Epoch 00000 | Step 00035 | Loss 65.0258 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.3155
+2019-07-15 22:55:27,631 3063 Epoch 00000 | Step 00040 | Loss 48.8247 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.1151
+2019-07-15 23:02:02,525 3063 Epoch 00000 | Step 00045 | Loss 47.3227 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.2152
+2019-07-15 23:08:56,783 3063 Epoch 00000 | Step 00050 | Loss 75.1113 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.6979
+2019-07-15 23:15:25,337 3063 Epoch 00000 | Step 00055 | Loss 73.2152 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.6045
+2019-07-15 23:22:18,403 3063 Epoch 00000 | Step 00060 | Loss 52.3194 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.9499
+2019-07-15 23:28:23,453 3063 Epoch 00000 | Step 00065 | Loss 52.8344 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.4783
+2019-07-15 23:34:41,423 3063 Epoch 00000 | Step 00070 | Loss 67.3634 | Acc 0.0400 | Root Acc 0.0400 | Time(s) 78.2660
+2019-07-15 23:41:19,668 3063 Epoch 00000 | Step 00075 | Loss 54.2997 | Acc 0.0000 | Root Acc 0.0000 | Time(s) 78.3606
+2019-07-15 23:48:03,314 3063 Epoch 00000 | Step 00080 | Loss 48.7983 | Acc 0.3600 | Root Acc 0.3600 | Time(s) 78.5122
+2019-07-15 23:54:45,394 3063 Epoch 00000 | Step 00085 | Loss 41.2674 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.6268
+2019-07-16 00:01:31,524 3063 Epoch 00000 | Step 00090 | Loss 61.5947 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.7743
+2019-07-16 00:08:04,705 3063 Epoch 00000 | Step 00095 | Loss 43.8503 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.7668
+2019-07-16 00:14:33,738 3063 Epoch 00000 | Step 00100 | Loss 37.4017 | Acc 0.4000 | Root Acc 0.4000 | Time(s) 78.7176
+2019-07-16 00:21:09,601 3063 Epoch 00000 | Step 00105 | Loss 50.4040 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.7396
+2019-07-16 00:27:36,630 3063 Epoch 00000 | Step 00110 | Loss 46.1718 | Acc 0.1200 | Root Acc 0.1200 | Time(s) 78.6777
+2019-07-16 00:34:31,332 3063 Epoch 00000 | Step 00115 | Loss 46.8078 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.8662
+2019-07-16 00:41:06,805 3063 Epoch 00000 | Step 00120 | Loss 41.3189 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.8758
+2019-07-16 00:48:03,140 3063 Epoch 00000 | Step 00125 | Loss 47.1760 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 79.0542
+2019-07-16 00:54:30,903 3063 Epoch 00000 | Step 00130 | Loss 43.9457 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.9954
+2019-07-16 01:00:57,157 3063 Epoch 00000 | Step 00135 | Loss 50.2511 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.9298
+2019-07-16 01:07:15,818 3063 Epoch 00000 | Step 00140 | Loss 45.5087 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.8138
+2019-07-16 01:13:53,117 3063 Epoch 00000 | Step 00145 | Loss 44.2544 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.8363
+2019-07-16 01:20:14,421 3063 Epoch 00000 | Step 00150 | Loss 45.2554 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.7492
+2019-07-16 01:26:31,540 3063 Epoch 00000 | Step 00155 | Loss 45.6580 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.6405
+2019-07-16 01:33:13,615 3063 Epoch 00000 | Step 00160 | Loss 43.0148 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.6965
+2019-07-16 01:39:40,256 3063 Epoch 00000 | Step 00165 | Loss 45.4457 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.6545
+2019-07-16 01:46:23,944 3063 Epoch 00000 | Step 00170 | Loss 69.1563 | Acc 0.1200 | Root Acc 0.1200 | Time(s) 78.7164
+2019-07-16 01:53:08,446 3063 Epoch 00000 | Step 00175 | Loss 53.9175 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.7795
+2019-07-16 01:59:55,842 3063 Epoch 00000 | Step 00180 | Loss 43.3819 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.8552
+2019-07-16 02:06:33,416 3063 Epoch 00000 | Step 00185 | Loss 38.6608 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.8732
+2019-07-16 02:12:51,919 3063 Epoch 00000 | Step 00190 | Loss 46.1389 | Acc 0.0800 | Root Acc 0.0800 | Time(s) 78.7887
+2019-07-16 02:19:38,610 3063 Epoch 00000 | Step 00195 | Loss 42.3201 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.8547
+2019-07-16 02:26:02,980 3063 Epoch 00000 | Step 00200 | Loss 39.1210 | Acc 0.4000 | Root Acc 0.4000 | Time(s) 78.8046
+2019-07-16 02:32:21,344 3063 Epoch 00000 | Step 00205 | Loss 41.7695 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.7274
+2019-07-16 02:38:56,126 3063 Epoch 00000 | Step 00210 | Loss 43.9552 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.7329
+2019-07-16 02:44:57,991 3063 Epoch 00000 | Step 00215 | Loss 40.6195 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.5835
+2019-07-16 02:51:41,956 3063 Epoch 00000 | Step 00220 | Loss 39.7881 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.6341
+2019-07-16 02:57:53,386 3063 Epoch 00000 | Step 00225 | Loss 40.0752 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.5366
+2019-07-16 03:04:00,664 3063 Epoch 00000 | Step 00230 | Loss 45.2676 | Acc 0.0800 | Root Acc 0.0800 | Time(s) 78.4251
+2019-07-16 03:10:15,258 3063 Epoch 00000 | Step 00235 | Loss 41.4918 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.3498
+2019-07-16 03:17:00,885 3063 Epoch 00000 | Step 00240 | Loss 43.7298 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.4081
+2019-07-16 03:23:27,181 3063 Epoch 00000 | Step 00245 | Loss 43.2085 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.3844
+2019-07-16 03:29:52,355 3063 Epoch 00000 | Step 00250 | Loss 40.0430 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.3571
+2019-07-16 03:36:24,110 3063 Epoch 00000 | Step 00255 | Loss 40.8498 | Acc 0.3600 | Root Acc 0.3600 | Time(s) 78.3570
+2019-07-16 03:42:44,917 3063 Epoch 00000 | Step 00260 | Loss 41.8593 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.3144
+2019-07-16 03:49:21,457 3063 Epoch 00000 | Step 00265 | Loss 42.1799 | Acc 0.3600 | Root Acc 0.3600 | Time(s) 78.3332
+2019-07-16 03:56:18,934 3063 Epoch 00000 | Step 00270 | Loss 44.9538 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.4295
+2019-07-16 04:02:55,446 3063 Epoch 00000 | Step 00275 | Loss 35.9569 | Acc 0.3600 | Root Acc 0.3600 | Time(s) 78.4454
+2019-07-16 04:08:57,431 3063 Epoch 00000 | Step 00280 | Loss 41.0042 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.3366
+2019-07-16 04:14:52,309 3063 Epoch 00000 | Step 00285 | Loss 47.8349 | Acc 0.0400 | Root Acc 0.0400 | Time(s) 78.2065
+2019-07-16 04:21:19,116 3063 Epoch 00000 | Step 00290 | Loss 46.3485 | Acc 0.1200 | Root Acc 0.1200 | Time(s) 78.1918
+2019-07-16 04:27:17,207 3063 Epoch 00000 | Step 00295 | Loss 36.1865 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.0795
+2019-07-16 04:33:22,205 3063 Epoch 00000 | Step 00300 | Loss 43.0738 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 77.9943
+2019-07-16 04:39:47,843 3063 Epoch 00000 | Step 00305 | Loss 40.6811 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 77.9799
+2019-07-16 04:46:39,573 3063 Epoch 00000 | Step 00310 | Loss 43.9638 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.0508
+2019-07-16 04:52:40,460 3063 Epoch 00000 | Step 00315 | Loss 44.1295 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 77.9569
+2019-07-16 04:59:11,758 3063 Epoch 00000 | Step 00320 | Loss 45.2742 | Acc 0.0400 | Root Acc 0.0400 | Time(s) 77.9616
+2019-07-16 05:05:37,674 3063 Epoch 00000 | Step 00325 | Loss 39.9211 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 77.9495
+2019-07-16 05:12:06,171 3063 Epoch 00000 | Step 00330 | Loss 43.3763 | Acc 0.0800 | Root Acc 0.0800 | Time(s) 77.9457
+2019-07-16 05:18:42,564 3063 Epoch 00000 | Step 00335 | Loss 44.7651 | Acc 0.1200 | Root Acc 0.1200 | Time(s) 77.9657
+2019-07-16 05:24:51,771 3063 Epoch 00000 | Step 00340 | Loss 41.7324 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 77.9046
+2019-07-16 05:25:49,514 3063 Epoch 00000 training time 26647.2526s
+2019-07-16 05:41:24,652 3063 Epoch 00000 | Dev Acc 0.2534 | Root Acc 0.2534
+2019-07-16 05:41:24,667 3063 0.0495
+2019-07-16 05:41:24,667 3063 0.004950000000000001
+2019-07-16 05:49:17,110 3063 Epoch 00001 | Step 00005 | Loss 38.4203 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 77.8737
+2019-07-16 05:55:35,760 3063 Epoch 00001 | Step 00010 | Loss 41.4116 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 77.8428
+2019-07-16 06:02:01,047 3063 Epoch 00001 | Step 00015 | Loss 40.3427 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 77.8316
+2019-07-16 06:08:51,264 3063 Epoch 00001 | Step 00020 | Loss 43.6711 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 77.8905
+2019-07-16 06:15:35,376 3063 Epoch 00001 | Step 00025 | Loss 42.0987 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 77.9310
+2019-07-16 06:21:40,476 3063 Epoch 00001 | Step 00030 | Loss 38.3276 | Acc 0.4400 | Root Acc 0.4400 | Time(s) 77.8640
+2019-07-16 06:27:59,017 3063 Epoch 00001 | Step 00035 | Loss 40.0958 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 77.8350
+2019-07-16 06:34:41,029 3063 Epoch 00001 | Step 00040 | Loss 42.5877 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 77.8690
+2019-07-16 06:41:31,423 3063 Epoch 00001 | Step 00045 | Loss 43.3153 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 77.9241
+2019-07-16 06:48:17,211 3063 Epoch 00001 | Step 00050 | Loss 36.7208 | Acc 0.3600 | Root Acc 0.3600 | Time(s) 77.9659
+2019-07-16 06:55:01,159 3063 Epoch 00001 | Step 00055 | Loss 40.9815 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.0018
+2019-07-16 07:01:42,741 3063 Epoch 00001 | Step 00060 | Loss 41.9213 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.0310
+2019-07-16 07:08:25,110 3063 Epoch 00001 | Step 00065 | Loss 43.0528 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.0613
+2019-07-16 07:14:31,200 3063 Epoch 00001 | Step 00070 | Loss 41.2655 | Acc 0.2800 | Root Acc 0.2800 | Time(s) 78.0018
+2019-07-16 07:21:13,920 3063 Epoch 00001 | Step 00075 | Loss 39.6607 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.0326
+2019-07-16 07:27:59,928 3063 Epoch 00001 | Step 00080 | Loss 42.5530 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.0706
+2019-07-16 07:34:45,397 3063 Epoch 00001 | Step 00085 | Loss 38.2477 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.1064
+2019-07-16 07:41:08,389 3063 Epoch 00001 | Step 00090 | Loss 43.5268 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.0887
+2019-07-16 07:47:50,176 3063 Epoch 00001 | Step 00095 | Loss 42.9887 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.1149
+2019-07-16 07:54:36,020 3063 Epoch 00001 | Step 00100 | Loss 43.6057 | Acc 0.2000 | Root Acc 0.2000 | Time(s) 78.1498
+2019-07-16 08:01:13,031 3063 Epoch 00001 | Step 00105 | Loss 41.1103 | Acc 0.3200 | Root Acc 0.3200 | Time(s) 78.1640
+2019-07-16 08:07:35,126 3063 Epoch 00001 | Step 00110 | Loss 41.1217 | Acc 0.1600 | Root Acc 0.1600 | Time(s) 78.1444
+2019-07-16 08:13:48,398 3063 Epoch 00001 | Step 00115 | Loss 39.3661 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.1058
+2019-07-16 08:20:33,426 3063 Epoch 00001 | Step 00120 | Loss 39.6482 | Acc 0.2400 | Root Acc 0.2400 | Time(s) 78.1375
